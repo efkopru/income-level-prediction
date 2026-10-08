@@ -1,0 +1,3 @@
+# Preserve exact bytes across platforms: published source and evidence manifests
+# include hashes of files whose existing line endings must remain unchanged.
+* -text

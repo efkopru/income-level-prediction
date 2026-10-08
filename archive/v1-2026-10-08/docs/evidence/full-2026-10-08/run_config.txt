@@ -1,0 +1,13 @@
+completed_utc: 2026-10-08T05:59:18Z
+mode: full
+seed: 12345
+trees: 200
+validation_fraction: 0.2
+selection_metric: balanced_accuracy
+positive_class: >50K
+threshold_tie_class: <=50K
+numeric: training_median_then_training_mean_sd
+categorical: missing_marker_unseen_to_training_mode
+excluded_features: education,fnlwgt
+sample_weights: none
+collation: C

@@ -1,0 +1,15 @@
+"partition","feature","unseen_rows"
+"validation","workclass",0
+"validation","maritalstatus",0
+"validation","occupation",0
+"validation","relationship",0
+"validation","race",0
+"validation","sex",0
+"validation","nativecountry",0
+"test","workclass",0
+"test","maritalstatus",0
+"test","occupation",0
+"test","relationship",0
+"test","race",0
+"test","sex",0
+"test","nativecountry",0

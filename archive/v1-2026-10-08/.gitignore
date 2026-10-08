@@ -1,0 +1,26 @@
+# Local R state and downloaded dependencies
+.R-library/
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+.Renviron
+
+# Downloaded inputs and generated runs, including record-level exports/models
+/data/raw/
+/results/
+*.rds
+*.RDS
+
+# Temporary inspection files and private local configuration
+/tmp/
+.env
+.env.*
+!.env.example
+*.log
+
+# Editor and operating-system artifacts
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

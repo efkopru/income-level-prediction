@@ -1,0 +1,6 @@
+"model","parameter","validation_balanced_accuracy"
+"majority",,0.5
+"logistic",,0.768651963656675
+"tree",0.001,0.76474869605744
+"forest",9,0.787068993475345
+"svm",1,0.766007060225368

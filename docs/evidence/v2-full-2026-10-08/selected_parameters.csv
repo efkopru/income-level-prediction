@@ -1,0 +1,6 @@
+"model","candidate","parameter_rule","parameter","order","sd_balanced_accuracy","mean_balanced_accuracy","nfolds","selected","final_parameter"
+"majority","prevalence","none",,1,"0","0.5",5,TRUE,
+"logistic","lambda=1e-04","lambda","0.0001",5,"0.0079067305627323805","0.75787968221505042",5,TRUE,"0.0001"
+"tree","cp=5e-04","cp","0.00050000000000000001",9,"0.012301855498498911","0.78226674085888526",5,TRUE,"0.00050000000000000001"
+"forest","mtry=third","third",,11,"0.0069592653092871732","0.78321386064477694",5,TRUE,"28"
+"svm","cost=10","cost","10",14,"0.0090052010161092693","0.75798226583887041",5,TRUE,"10"

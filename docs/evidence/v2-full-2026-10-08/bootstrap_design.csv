@@ -1,0 +1,2 @@
+"replicates","seed","n_rows","n_clusters","method","confidence","conditional_on_fitted_models"
+1000,13345,16255,16249,"paired_raw_predictor_cluster_percentile","0.94999999999999996",TRUE

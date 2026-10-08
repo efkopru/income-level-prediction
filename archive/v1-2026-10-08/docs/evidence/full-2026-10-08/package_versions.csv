@@ -1,0 +1,5 @@
+"package","version"
+"rpart","4.1.27"
+"randomForest","4.7.1.2"
+"e1071","1.7.17"
+"proxy","0.4.29"

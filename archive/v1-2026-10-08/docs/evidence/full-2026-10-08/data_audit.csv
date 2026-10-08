@@ -1,0 +1,12 @@
+"item","value"
+"raw_training_rows",32561
+"raw_test_rows",16281
+"training_conflicting_signatures",1
+"training_conflict_rows_excluded",2
+"training_duplicate_rows_excluded",24
+"test_train_overlap_rows_excluded",26
+"test_internal_duplicate_rows_retained",6
+"eligible_training_rows",32535
+"eligible_test_rows",16255
+"training_rows_with_missing_values",2399
+"test_rows_with_missing_values",1221
