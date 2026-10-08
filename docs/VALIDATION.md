@@ -124,3 +124,25 @@ Rscript --vanilla tests/test_review_plots.R
 ```
 
 The Windows/Linux workflow executes all four commands and the official-data smoke run. Hosted results are available on the pull request and in GitHub Actions. The live portfolio remains unchanged.
+
+## Additional summary and results graphics
+
+The additional gallery at `docs/figures/v2-results-summary` uses only verified public version 2 aggregate tables. It contains ten ggplot2 PNGs, one ten-page vector PDF, eleven derived statistics CSVs, an HTML gallery, a file guide, and provenance metadata: 29 files in total. No model fitting, threshold search, recalibration, or new bootstrap calculation was performed.
+
+The new summary suite passed 24 offline checks under R 4.6.1 on Windows. Checks cover confusion-derived denominators, percentage-point and relative gains, preserved missing values, calibration weighting, CV selection arithmetic, subgroup and profile counts, paired-interval orientation, invalid input rejection, destination protection, and unchanged source evidence. An independent read-only review confirmed the derived statistics and interpretation limits.
+
+`scripts/verify_results_summary.R` verified all 28 manifested output hashes and sizes, 20 input/source provenance records, eleven recomputed derived tables, ten catalog entries, and package-version metadata. The existing evidence verifier also passed for both historical runs, archived sources, and the earlier supplemental figures.
+
+PR review found that automatic CSV row-name inference could discard an extra leading field while preserving the expected column names. Stored-table parsing now explicitly disables row-name inference and row filling. Nine rejection-suite checks cover valid originals and temporary copies, extra leading fields in statistics and catalog CSVs, duplicate headers, blank rows, truncated rows, fixture restoration, and unchanged published bytes. Corruption cases refresh fixture hashes first, ensuring the tests exercise CSV validation. A fresh end-to-end render reproduced all ten PNGs and eleven derived tables byte for byte.
+
+All ten PNGs were visually inspected at 2400 x 1500 pixels. All ten final PDF pages were rendered with Poppler and matched the inspected preview pages; extracted text stays within each 12 x 7.5 inch page. Local Poppler fallback-font messages did not produce missing labels or symbols. The HTML gallery was inspected at desktop and 390-pixel mobile viewport settings: text wraps, tables scroll within their containers, images preserve aspect ratio, and the page has no horizontal overflow. All 25 distinct local file links resolve.
+
+Run the new offline checks from the project root:
+
+```sh
+Rscript --vanilla tests/test_results_summary.R
+Rscript --vanilla tests/test_results_summary_verifier.R
+Rscript --vanilla scripts/verify_results_summary.R
+```
+
+The Windows/Linux workflow runs all three commands and creates a new summary from the published aggregates in an ignored CI directory. Hosted check results for each revision are recorded on [PR #2](https://github.com/efkopru/income-level-prediction/pull/2).

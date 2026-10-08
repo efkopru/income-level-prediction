@@ -130,6 +130,23 @@ The [supplemental uncertainty figures](docs/figures/v2-uncertainty-review/README
 
 ![Paired model differences with conditional 95% intervals](docs/figures/v2-uncertainty-review/paired_differences.png)
 
+### Additional results summary
+
+The [new results gallery](docs/figures/v2-results-summary/index.html) contains **ten additional ggplot2 charts and eleven downloadable statistics tables**. Open the HTML file locally for the complete gallery, use the [file guide](docs/figures/v2-results-summary/README.md) on GitHub, or read the [ten-page PDF chart book](docs/figures/v2-results-summary/results_summary.pdf).
+
+Charts cover the performance scorecard, classification errors, gains over baseline, precision and recall, probability quality, calibration gaps, all thirteen trained tuning configurations, subgroup errors, model-profile sensitivity, and sample composition. Additional statistics include errors per 1,000 records, MCC, negative predictive value, relative error reduction, average-precision lift, and Brier skill. All PNGs are **2400 x 1500 pixels**, with matching vector PDF pages.
+
+These are descriptive views of the same verified published results. No models, thresholds, calibration corrections, or bootstrap intervals were re-estimated. Recreate the supplement with installed project dependencies and a new output directory:
+
+```sh
+Rscript --vanilla scripts/create_results_summary.R docs/evidence/v2-full-2026-10-08 results/new-results-summary
+Rscript --vanilla tests/test_results_summary.R
+Rscript --vanilla tests/test_results_summary_verifier.R
+Rscript --vanilla scripts/verify_results_summary.R
+```
+
+![Seven-metric performance scorecard](docs/figures/v2-results-summary/01_performance_scorecard.png)
+
 ## Export aggregate evidence
 
 After completing and inspecting a full run:

@@ -1,0 +1,12 @@
+operation: additional descriptive summaries of published version 2 aggregates
+model_refit: false
+new_bootstrap: false
+threshold_tuning: false
+original_evidence_modified: false
+source_directory: docs/evidence/v2-full-2026-10-08
+R: R version 4.6.1 (2026-06-24 ucrt)
+ggplot2: 4.0.3
+locale: C
+PNG_dimensions: 2400 x 1500 pixels
+PDF: ten pages, 12 x 7.5 inches each
+scope: unweighted reused historical benchmark; additional descriptive statistics, no confirmatory testing

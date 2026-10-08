@@ -1,0 +1,15 @@
+"model","candidate","parameter_rule","parameter","order","sd_balanced_accuracy","mean_balanced_accuracy","nfolds","selected","candidate_rank","family","boundary_flag"
+"majority","prevalence","none",,1,"0","0.5",5,TRUE,1,"majority",
+"logistic","lambda=0.1","lambda","0.10000000000000001",2,"0.0095838484948304083","0.69812449399863574",5,FALSE,4,"logistic",TRUE
+"logistic","lambda=0.01","lambda","0.01",3,"0.0083565372916799413","0.75196666413703528",5,FALSE,3,"logistic",FALSE
+"logistic","lambda=0.001","lambda","0.001",4,"0.0076909354107525304","0.75780075456349283",5,FALSE,2,"logistic",FALSE
+"logistic","lambda=1e-04","lambda","0.0001",5,"0.0079067305627323805","0.75787968221505042",5,TRUE,1,"logistic",TRUE
+"tree","cp=0.01","cp","0.01",6,"0.0078051113434179477","0.72964947735902941",5,FALSE,4,"tree",TRUE
+"tree","cp=0.005","cp","0.0050000000000000001",7,"0.0065460282729840674","0.73934405398971625",5,FALSE,3,"tree",FALSE
+"tree","cp=0.001","cp","0.001",8,"0.012655276046176065","0.76817476571144838",5,FALSE,2,"tree",FALSE
+"tree","cp=5e-04","cp","0.00050000000000000001",9,"0.012301855498498911","0.78226674085888526",5,TRUE,1,"tree",TRUE
+"forest","mtry=sqrt","sqrt",,10,"0.0097136104551800422","0.77934314067161714",5,FALSE,2,"forest",
+"forest","mtry=third","third",,11,"0.0069592653092871732","0.78321386064477694",5,TRUE,1,"forest",
+"svm","cost=0.1","cost","0.10000000000000001",12,"0.0098748079199601577","0.7569269255992308",5,FALSE,3,"svm",TRUE
+"svm","cost=1","cost","1",13,"0.0095864852893165573","0.75735251388262415",5,FALSE,2,"svm",FALSE
+"svm","cost=10","cost","10",14,"0.0090052010161092693","0.75798226583887041",5,TRUE,1,"svm",TRUE
