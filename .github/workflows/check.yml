@@ -38,5 +38,9 @@ jobs:
         run: Rscript --vanilla tests/run_tests.R
       - name: Test supplemental uncertainty plots
         run: Rscript --vanilla tests/test_review_plots.R
+      - name: Test additional results statistics
+        run: Rscript --vanilla tests/test_results_summary.R
+      - name: Verify additional results summary
+        run: Rscript --vanilla scripts/verify_results_summary.R
       - name: Run downloaded-data smoke check
         run: Rscript --vanilla IncomeLevelPrediction.R --download --smoke --output results/ci-smoke
