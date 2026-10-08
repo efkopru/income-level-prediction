@@ -1,8 +1,8 @@
 # Validation record: version 2
 
-The full run completed on October 8, 2026 and is preserved in `results/v2-full-2026-10-08`. Its reviewed aggregate export is [`evidence/v2-full-2026-10-08`](evidence/v2-full-2026-10-08/). The [results and conclusion](evidence/v2-full-2026-10-08/report.md), [declared protocol](METHODOLOGY_V2.md), and audit records document the current implementation. The complete [version 1 validation record](../archive/v1-2026-10-08/docs/VALIDATION.md) remains unchanged.
+The full run completed on October 8, 2026 and is preserved in `results/v2-full-2026-10-08`. Its reviewed aggregate export is [`evidence/v2-full-2026-10-08`](evidence/v2-full-2026-10-08/). The [results and conclusion](evidence/v2-full-2026-10-08/report.md), [declared protocol](METHODOLOGY_V2.md), and audit records document the published experiment. Its nine source files are preserved in the [version 2 source snapshot](../archive/v2-2026-10-08/README.md); current maintenance code has separate hashes. The complete [version 1 validation record](../archive/v1-2026-10-08/docs/VALIDATION.md) remains unchanged.
 
-## Observed checks
+## Published experiment checks
 
 | Check | Result |
 | --- | --- |
@@ -14,7 +14,7 @@ The full run completed on October 8, 2026 and is preserved in `results/v2-full-2
 | Dependency verification | All 34 package versions match `renv.lock`; R 4.6.1 recorded |
 | Independent prediction audit | Recomputed final, selected out-of-fold, subgroup, and profile metrics; maximum arithmetic difference `2.55e-15` |
 | Saved-model inference | In a fresh R process, the first 25 retained test records across all five saved models produced identical classes and scores |
-| Source and input provenance | Nine current source/protocol/lockfile hashes and both official input hashes and sizes match the completed run |
+| Source and input provenance | Nine preserved version 2 source/protocol/lockfile hashes and both official input hashes and sizes match the completed run |
 | Output integrity | All 39 local manifest entries and 34 public manifest entries match their hashes and byte sizes |
 | Final graphics | All six 2400 x 1500 PNGs and six corresponding vector PDFs visually inspected |
 | Historical preservation | All 30 version 1 snapshot SHA-256 entries and the original script SHA-256 match |
@@ -94,12 +94,33 @@ A preliminary full run was interrupted before test evaluation when the serializa
 
 ## Artifact and publication boundaries
 
-The full local directory contains 40 files, including its manifest. The public export contains 35 files: 33 allowlisted aggregate artifacts, its README, and its public manifest. All copied artifacts match their local originals. Current source and input hashes also match, and all recorded package versions match the lockfile.
+The full local directory contains 40 files, including its manifest. The public export contains 35 files: 33 allowlisted aggregate artifacts, its README, and its public manifest. All copied artifacts match their local originals. Preserved version 2 source and input hashes also match, and all recorded package versions match the archived lockfile.
 
-The public export excludes raw records, final and out-of-fold predictions, split/fold identifiers, model objects, session details, local libraries, and temporary audit files. Exact predictions and model objects remain in ignored local directories. Audit helper files remain under ignored `tmp/`; their observed results are recorded here.
+The public export excludes raw records, final and out-of-fold predictions, split/fold identifiers, model objects, session details, local libraries, and temporary audit files. Exact predictions and model objects remain in ignored local directories. The original detailed prediction-audit helpers remain under ignored `tmp/`; their observed results are recorded here. The committed `scripts/verify_evidence.R` now makes public artifact and archived-source integrity checks repeatable without those local records.
 
 The unchanged original script SHA-256 is `3ad3bb786273ca05425185d9cffe789960ce00d0feb317fcaa2aa246978dbb5f`. The 30-file version 1 snapshot and its evidence remain separately preserved. Results across versions reflect several simultaneous methodological changes and cannot identify the effect of any one change.
 
 This record establishes local analysis validation. The public project repository is [efkopru/income-level-prediction](https://github.com/efkopru/income-level-prediction); subsequent hosted Windows/Linux check results are recorded in [GitHub Actions](https://github.com/efkopru/income-level-prediction/actions/workflows/check.yml). Publication preserves exact file bytes so that source and evidence hashes remain valid across Git checkouts. The live portfolio remains unchanged.
 
 The official test file was already inspected in version 1; this remains a reused historical benchmark rather than fresh independent confirmation.
+
+## Maintenance review
+
+The maintenance revision preserves every original full-run artifact and all version 1 snapshot bytes. The nine exact version 2 source files are retained under `archive/v2-2026-10-08`; the original complete checkout is commit `2ab72d12cf5290df1841da70b524740a70718c17`. No full model refit, new model search, recalibration, or new uncertainty calculation was performed for this revision.
+
+The main regression suite now has 20 passing checks. Added cases reject an impossible output parent before data loading or training, simulate denied write access, verify probe cleanup, and check default/modified run settings. The synthetic end-to-end case requests settings above the smoke limits and verifies that the recorded methodology contains effective values of 30 trees, three folds, and 40 bootstrap replicates. Custom inputs record unknown evaluation history rather than claiming the official benchmark's history.
+
+The committed evidence verifier checks both public evidence directories, version 1 snapshot SHA-256 entries, preserved source hashes, declared input checksums and sizes, package records, the original script hash, and supplemental plotting provenance. Its standalone suite has 36 passing checks, including corrupt, missing, duplicate, unsafe-path, and inconsistent-provenance fixtures. These are file-integrity and metadata checks, not recomputation of private prediction records.
+
+The supplemental figures redraw the unchanged aggregate estimates and interval endpoints. Eight plot checks passed locally; a ninth directory-alias case was explicitly skipped because this Windows sandbox denied junction creation. That symlink case is mandatory in Linux CI. The checks cover complete model/metric coverage, all 30 paired differences, sign orientation, symmetric axes, foreground intervals, source-table validation, and destination protection. Both PNGs and both PDF pages were visually inspected; PDF text fits within the page. Separate input, rendering-source, and figure manifests document this presentation update.
+
+Run the maintenance checks from the project root:
+
+```sh
+Rscript --vanilla tests/run_tests.R
+Rscript --vanilla scripts/verify_evidence.R
+Rscript --vanilla tests/test_evidence_verifier.R
+Rscript --vanilla tests/test_review_plots.R
+```
+
+The Windows/Linux workflow executes all four commands and the official-data smoke run. Hosted results are available on the pull request and in GitHub Actions. The live portfolio remains unchanged.

@@ -80,82 +80,21 @@ income_metric_plot <- function(evaluation, subtitle) {
   values$metric <- factor(values$metric, levels = names(metric_names), labels = metric_names)
   values$value_label <- ifelse(is.finite(values$estimate), sprintf("%.3f", values$estimate), "NA")
   ggplot2::ggplot(values, ggplot2::aes(x = estimate, y = model, color = model)) +
-    # Small hollow markers and a foreground interval preserve narrow intervals.
-    ggplot2::geom_point(size = 1.8, shape = 21, fill = "white", stroke = 0.6, na.rm = TRUE) +
     ggplot2::geom_errorbar(ggplot2::aes(xmin = lower, xmax = upper),
-      orientation = "y", width = 0.22, linewidth = 0.65, na.rm = TRUE) +
-    ggplot2::geom_text(ggplot2::aes(x = 1.025, label = value_label),
+      orientation = "y", width = 0.18, linewidth = 0.8, na.rm = TRUE) +
+    ggplot2::geom_point(size = 3.4, na.rm = TRUE) +
+    ggplot2::geom_text(ggplot2::aes(x = 1.045, label = value_label),
       size = 3.4, hjust = 0, show.legend = FALSE) +
     ggplot2::facet_wrap(~metric, ncol = 2) +
     ggplot2::scale_y_discrete(labels = income_plot_labels) +
-    ggplot2::scale_x_continuous(limits = c(0, 1.12), breaks = seq(0, 1, 0.25),
+    ggplot2::scale_x_continuous(limits = c(0, 1.17), breaks = seq(0, 1, 0.25),
       labels = function(x) sprintf("%.2f", x), expand = ggplot2::expansion(mult = 0)) +
     income_color_scale() + income_plot_theme() +
     ggplot2::theme(legend.position = "none", panel.grid.major.y = ggplot2::element_blank()) +
     ggplot2::labs(title = "Performance across four complementary metrics", subtitle = subtitle,
       x = "Metric value", y = NULL,
-      caption = paste("Hollow markers: point estimates. Foreground bars: conditional 95% cluster-bootstrap intervals when available. Common 0-1 metric scale.",
-        "Intervals describe this evaluation sample, conditional on the fitted models; they do not include training variability.", sep = "\n"))
-}
-
-income_paired_difference_plot <- function(evaluation, subtitle) {
-  metric_names <- c(accuracy = "Accuracy", balanced_accuracy = "Balanced\naccuracy",
-    recall = "Recall", roc_auc = "ROC AUC", average_precision = "Average\nprecision")
-  trained <- setdiff(names(income_plot_labels), "majority")
-  pairs <- utils::combn(trained, 2L)
-  pair_key <- function(a, b) vapply(seq_along(a), function(i)
-    paste(sort(c(a[i], b[i])), collapse = ":"), character(1))
-  expected_pairs <- pair_key(pairs[1L, ], pairs[2L, ])
-  values <- evaluation$paired_differences
-  required <- c("model_a", "model_b", "metric", "estimate", "lower", "upper")
-  if (!is.data.frame(values) || !all(required %in% names(values)) ||
-      nrow(values) != length(expected_pairs) * length(metric_names) ||
-      anyNA(values[c("model_a", "model_b", "metric")]) ||
-      any(!values$model_a %in% trained | !values$model_b %in% trained))
-    stop("Paired-difference plot requires all six trained-model pairs and all five declared metrics.")
-  values$pair <- pair_key(values$model_a, values$model_b)
-  expected <- as.vector(outer(expected_pairs, names(metric_names), paste))
-  actual <- paste(values$pair, values$metric)
-  if (anyDuplicated(actual) || !setequal(actual, expected))
-    stop("Paired-difference plot requires one row for every trained-model pair and declared metric.")
-  for (column in c("estimate", "lower", "upper")) {
-    if (!is.numeric(values[[column]]) || any(!is.finite(values[[column]])))
-      stop("Paired-difference plot requires finite estimates and interval endpoints.")
-  }
-  if (any(values$lower > values$upper)) stop("Paired-difference interval endpoints are reversed.")
-  values$pair_label <- paste(income_plot_labels[values$model_a], "-", income_plot_labels[values$model_b])
-  if (any(vapply(split(values$pair_label, values$pair), function(x) length(unique(x)) != 1L, logical(1))))
-    stop("Pair orientation must agree across metrics; differences are model_a minus model_b.")
-  pair_labels <- values$pair_label[match(expected_pairs, values$pair)]
-  values$pair <- factor(values$pair, levels = rev(expected_pairs), labels = rev(pair_labels))
-  values$metric <- factor(values$metric, levels = names(metric_names), labels = metric_names)
-  # Shared symmetric limits include every endpoint and estimate without changing units.
-  extent <- max(abs(unlist(values[c("estimate", "lower", "upper")])))
-  limit <- max(0.01, ceiling(extent * 1.08 / 0.01) * 0.01)
-  axis_breaks <- pretty(c(-limit, limit), n = 3)
-  axis_breaks <- axis_breaks[abs(axis_breaks) <= 0.8 * limit]
-  axis_digits <- max(2L, ceiling(-log10(min(abs(axis_breaks[axis_breaks != 0])))))
-  ggplot2::ggplot(values, ggplot2::aes(x = estimate, y = pair)) +
-    ggplot2::geom_vline(xintercept = 0, linewidth = 0.65, color = "#6B7D8F", linetype = "dashed") +
-    ggplot2::geom_point(size = 2, shape = 21, fill = "white", stroke = 0.65, color = "#0072B2") +
-    ggplot2::geom_errorbar(ggplot2::aes(xmin = lower, xmax = upper), orientation = "y",
-      width = 0.15, linewidth = 0.75, color = "#0072B2") +
-    ggplot2::facet_grid(~metric) +
-    ggplot2::scale_x_continuous(limits = c(-limit, limit),
-      breaks = axis_breaks, labels = function(x)
-        ifelse(x == 0, "0", formatC(x, format = "f", digits = axis_digits, flag = "+")),
-      expand = ggplot2::expansion(mult = 0.03)) +
-    income_plot_theme() +
-    ggplot2::theme(panel.grid.major.y = ggplot2::element_blank(),
-      axis.text.y = ggplot2::element_text(size = 10), strip.text = ggplot2::element_text(size = 10.5),
-      panel.spacing = grid::unit(0.65, "lines")) +
-    ggplot2::labs(title = "Paired differences across all trained models", subtitle = subtitle,
-      x = "Difference = model_a - model_b (raw metric units; positive favors the first model in the row)", y = NULL,
-      caption = paste(
-        "All six pairs and five declared metrics. Hollow markers: estimates. Bars: conditional 95% paired cluster-bootstrap percentile intervals.",
-        "Clusters are identical raw predictor profiles. Intervals condition on fitted models and this reused test sample; training variability is excluded.",
-        "A difference of 0.01 is one percentage point for accuracy, balanced accuracy, and recall; it is 0.01 score units for ROC AUC and average precision.",
-        "Intervals are not adjusted for multiple comparisons. A zero-crossing interval is not evidence of equivalence.", sep = "\n"))
+      caption = paste("Dots: point estimates. Lines: 95% cluster-bootstrap intervals when available.",
+        "Intervals describe this reused test sample, conditional on the fitted models; they do not include training variability.", sep = "\n"))
 }
 
 income_curve_plot <- function(evaluation, subtitle) {

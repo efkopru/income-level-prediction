@@ -1,34 +1,4 @@
 # Narrative is generated from the current run, never copied from older scores.
-write_run_methodology <- function(options, official, n_training, n_test) {
-  settings <- income_run_settings(options)
-  rows <- vapply(seq_len(nrow(settings)), function(i) sprintf("| %s | %s | %s | %s |",
-    settings$setting[i], settings$reference[i], settings$actual[i],
-    if (settings$changed[i]) "Changed" else "Matches"), character(1))
-  text <- c("# Recorded run methodology", "",
-    "The settings and data summary below describe this execution. The historical version 2",
-    "reference plan follows separately; its fixed settings and sample counts must not override this summary.", "",
-    paste("Run mode:", if (options$smoke) "**SMOKE: sampled execution check, not benchmark evidence.**" else "full."),
-    paste("Inputs:", if (official) "checksum-verified UCI reference files." else
-      "**CUSTOM: input files differ from the UCI reference checksums; historical sample counts do not apply.**"),
-    sprintf("Actual retained sample: %s training rows and %s test rows.", n_training, n_test), "",
-    "| Setting | Historical reference | Actual run | Comparison |",
-    "| --- | ---: | ---: | --- |", rows, "",
-    if (any(settings$changed))
-      "**Settings differ from the historical reference plan. Interpret this run as a separate configuration.**" else
-      "The four recorded settings match the historical reference plan.",
-    if (options$smoke) paste("Smoke mode also limits training/test rows and evaluates only the first candidate",
-      "per family. The table records effective settings after smoke limits, not the originally requested values.") else
-      "Full mode uses the complete declared candidate grid.", "",
-    "Matching settings alone do not reproduce the published experiment: input and source hashes,",
-    "runtime, and packages also matter. Consult source_manifest.csv, input_manifest.csv,",
-    "package_versions.csv, and run_config.txt. The historical benchmark remains reused.", "",
-    "## Historical reference plan", "",
-    "The text below is the original reference plan, retained for context. Any differences listed above",
-    "are run-specific deviations; its declaration date is not a preregistration of this execution.", "",
-    readLines(file.path(options$root, "docs/METHODOLOGY_V2.md"), warn = FALSE))
-  writeLines(text, file.path(options$output, "methodology.md"))
-}
-
 write_run_report <- function(evaluation, bundle, audit, options, warnings, official) {
   labels <- c(majority = "Majority baseline", logistic = "Ridge logistic regression",
     tree = "Decision tree", forest = "Probability random forest", svm = "Linear SVM")
@@ -64,15 +34,13 @@ write_run_report <- function(evaluation, bundle, audit, options, warnings, offic
     "How do a majority baseline, ridge logistic regression, a decision tree, a probability random forest,",
     "and a linear SVM compare when predicting the historical UCI Adult income category >50K?",
     "This evaluates classification, ranking, and probability quality as separate properties.", "",
-    if (official) c("The official benchmark test was examined in version 1. It is a **reused benchmark test**,",
-      "not a fresh independent validation sample.") else
-      "These are caller-supplied files. Their independence and history of prior evaluation are not established.",
-    "The pipeline selects model settings from training folds only; it does not select settings or thresholds from test scores.",
-    "Caller-supplied overrides are separate configurations, not a new preregistered experiment.", "",
+    "The official benchmark test was examined in version 1. It is a **reused benchmark test**, not a fresh",
+    "independent validation sample. The version 2 protocol was written before this run; test results did not",
+    "select its model settings or thresholds. The previous code and evidence remain preserved separately.", "",
     "## Data and methods", "",
     paste("Input status:", if (official) "both files match the recorded UCI reference checksums." else
       "CUSTOM INPUTS, not checksum-verified UCI reference files."),
-    sprintf("Final training sample: %s records. Evaluation sample: %s records. Test positive prevalence: %.2f%%.",
+    sprintf("Final training sample: %s records. Reused test sample: %s records. Test positive prevalence: %.2f%%.",
       nrow(bundle$fold_assignments), metrics$n[1], 100 * metrics$n_positive[1] / metrics$n[1]),
     "Exact repeated training records are collapsed. Predictor profiles with conflicting training labels remain",
     "in the sample and in the same CV fold. Test rows matching original training raw predictor signatures are",
@@ -84,18 +52,15 @@ write_run_report <- function(evaluation, bundle, audit, options, warnings, offic
     "Thresholds remained probability >0.5 and oriented SVM margin >0. No test-based threshold tuning occurred.",
     "Selected settings were refitted on all eligible training records. Ridge logistic regression uses glmnet;",
     "the forest uses ranger leaf probabilities on the common encoded feature matrix. SVM scores are margins.", "",
-    "Actual settings, deviations, and the historical reference plan are in [the recorded methodology](methodology.md).",
-    if (any(income_run_settings(options)$changed))
-      "**This run changes settings from the historical reference plan; consult the recorded comparison table.**" else
-      "The four recorded settings match the reference plan; source and input hashes identify this execution.", "",
+    "Full specifications and cited sources are in [the recorded methodology](methodology.md).", "",
     "## Cross-validation and selected settings", "",
     "| Model | Selected setting | Mean balanced accuracy | Fold SD |",
     "|---|---|---:|---:|", cv_rows, "",
-    sprintf("The training-CV selection rule preferred **%s** before evaluating the test set.", labels[preferred]),
+    sprintf("The training-CV selection rule preferred **%s** before evaluating the reused test set.", labels[preferred]),
     "Fold SD describes variation among dependent folds; it is not a confidence interval. CV scores used for",
     "selection are optimistic as performance estimates. They should not be presented as external validation.", "",
     "![Grouped training cross-validation](cv_comparison.png)", "",
-    if (official) "## Reused-test results" else "## Custom-input evaluation results", "",
+    "## Reused-test results", "",
     "| Model | Accuracy | Balanced accuracy | Precision >50K | Recall >50K | ROC AUC | Average precision |",
     "|---|---:|---:|---:|---:|---:|---:|", metric_rows, "",
     sprintf("The CV-preferred model achieved %.2f%% accuracy, %.2f%% balanced accuracy, and %.2f%% recall for >50K.",
@@ -112,7 +77,7 @@ write_run_report <- function(evaluation, bundle, audit, options, warnings, offic
     "## Uncertainty and model comparisons", "",
     sprintf("The run used %s paired cluster-bootstrap replicates with 95%% percentile intervals.", options$bootstrap),
     "A cluster is one raw 14-predictor signature; every model uses the same sampled clusters. Intervals condition",
-    "on these already-fitted models and this evaluation sample. They do not include training, model-selection,",
+    "on these already-fitted models and this benchmark sample. They do not include training, model-selection,",
     "population-shift, or prior test-exposure uncertainty. Clusters are not verified person identifiers.",
     "[Paired differences](paired_differences.csv) cover all six pairs of trained models. Positive values favor",
     "model_a for the listed metric. These unadjusted exploratory intervals are not multiplicity-corrected tests",
@@ -135,13 +100,13 @@ write_run_report <- function(evaluation, bundle, audit, options, warnings, offic
     "reports the two subsets without changing the primary evaluation or selecting models from those results.", "",
     "## Conclusion", "",
     sprintf("The revised training procedure selected %s using grouped cross-validation.", labels[preferred]),
-    sprintf("On this evaluation sample, %s had the highest observed accuracy, %s the highest ROC AUC, and %s the highest average precision.",
+    sprintf("On the reused benchmark, %s had the highest observed accuracy, %s the highest ROC AUC, and %s the highest average precision.",
       labels[top_accuracy], labels[top_auc], labels[top_ap]),
     sprintf("At its fixed classification threshold, the CV-preferred model missed %s of %s >50K records and generated %s false positives.",
       chosen$fn, chosen$n_positive, chosen$fp),
     "This separates useful ranking from the practical errors made at a chosen threshold. Probability calibration",
     "and subgroup performance add information that accuracy alone cannot supply. The uncertainty estimates",
-    "quantify conditional test-sample variability; they do not establish an independent evaluation history.", "",
+    "quantify conditional test-sample variability while preserving the limits of this reused benchmark.", "",
     "The defensible contribution is a reproducible R comparison with explicit data handling, grouped model selection,",
     "traceable outputs, and multidimensional evaluation. It is not a current-income estimator, a causal study,",
     "a deployment validation, or evidence of universal model superiority. A fresh external or temporal sample",
@@ -152,8 +117,7 @@ write_run_report <- function(evaluation, bundle, audit, options, warnings, offic
     "[source and protocol hashes](source_manifest.csv), [package versions](package_versions.csv), and run_config.txt",
     "record the completed run. Public exports contain aggregate evidence; record-level predictions, fold IDs,",
     "and fitted objects remain local. The renv lockfile records package versions for restoration.", "",
-    paste(if (official) "Data:" else "Reference task (not attribution of the custom files):",
-      "Becker, B. and Kohavi, R. (1996). [Adult, UCI](https://archive.ics.uci.edu/dataset/2/adult)."),
+    "Data: Becker, B. and Kohavi, R. (1996). [Adult, UCI](https://archive.ics.uci.edu/dataset/2/adult).",
     "DOI: 10.24432/C5XW20. Dataset license: CC BY 4.0.")
   writeLines(text, file.path(options$output, "report.md"), useBytes = TRUE)
 }

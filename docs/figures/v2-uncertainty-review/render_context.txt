@@ -1,0 +1,12 @@
+operation: supplemental re-render of published aggregate tables
+refit: false
+bootstrap_recomputed: false
+published_evidence_modified: false
+source_directory: docs/evidence/v2-full-2026-10-08
+R_version: R version 4.6.1 (2026-06-24 ucrt)
+ggplot2_version: 4.0.3
+locale: C
+PNG_dimensions: 2400 x 1500 pixels
+PDF_dimensions: 12 x 7.5 inches
+plot_source_hash_algorithm: MD5
+source_validation: all four aggregate CSV hashes and sizes checked against public_artifact_manifest.csv before CSV parsing

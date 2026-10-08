@@ -30,7 +30,13 @@ jobs:
           use-public-rspm: true
       - name: Install dependencies
         run: Rscript --vanilla scripts/install_dependencies.R
+      - name: Verify preserved public evidence
+        run: Rscript --vanilla scripts/verify_evidence.R
+      - name: Test evidence verifier rejection cases
+        run: Rscript --vanilla tests/test_evidence_verifier.R
       - name: Run offline checks
         run: Rscript --vanilla tests/run_tests.R
+      - name: Test supplemental uncertainty plots
+        run: Rscript --vanilla tests/test_review_plots.R
       - name: Run downloaded-data smoke check
         run: Rscript --vanilla IncomeLevelPrediction.R --download --smoke --output results/ci-smoke

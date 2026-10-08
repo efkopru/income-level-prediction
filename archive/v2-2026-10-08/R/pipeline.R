@@ -3,31 +3,6 @@ income_sources <- function() c("IncomeLevelPrediction.R", file.path("R",
   c("data.R", "models.R", "evaluation.R", "plots.R", "reporting.R", "pipeline.R")),
   "renv.lock", "docs/METHODOLOGY_V2.md")
 
-income_reference_settings <- function() c(seed = 12345L, trees = 500L, folds = 5L, bootstrap = 1000L)
-
-income_run_settings <- function(options) {
-  reference <- income_reference_settings()
-  actual <- vapply(names(reference), function(name) options[[name]], numeric(1))
-  data.frame(setting = names(reference), reference = unname(reference),
-    actual = unname(actual), changed = unname(actual != reference), stringsAsFactors = FALSE)
-}
-
-prepare_income_output <- function(path) {
-  if (file.exists(path) && !dir.exists(path)) stop("Output path is a file.")
-  if (dir.exists(path) && length(list.files(path, all.files = TRUE, no.. = TRUE)))
-    stop("Output directory is not empty. Choose a new output path to preserve prior results.")
-  if (!dir.exists(path) && !dir.create(path, recursive = TRUE, showWarnings = FALSE))
-    stop("Cannot create output directory: ", path)
-  probe <- tempfile(".income-write-check-", tmpdir = path)
-  on.exit(if (file.exists(probe)) unlink(probe), add = TRUE)
-  writable <- tryCatch({ writeLines("output check", probe, useBytes = TRUE); TRUE },
-    warning = function(w) FALSE, error = function(e) FALSE)
-  if (!writable) stop("Output directory is not writable: ", path)
-  if (unlink(probe) != 0L || file.exists(probe))
-    stop("Cannot remove the output write-check file: ", probe)
-  invisible(path)
-}
-
 write_income_csv <- function(data, path) {
   # write.csv formats numeric columns to about 15 significant digits. That can
   # merge adjacent scores, changing tied-score ranking metrics after reloading.
@@ -40,9 +15,10 @@ write_income_csv <- function(data, path) {
 }
 
 parse_options <- function(args, root = getwd()) {
-  result <- c(list(data_dir = file.path(root, "data", "raw"),
+  result <- list(data_dir = file.path(root, "data", "raw"),
     output = file.path(root, "results", format(Sys.time(), "v2-%Y%m%d-%H%M%S", tz = "UTC")),
-    smoke = FALSE, download = FALSE, help = FALSE, root = root), as.list(income_reference_settings()))
+    seed = 12345L, trees = 500L, folds = 5L, bootstrap = 1000L,
+    smoke = FALSE, download = FALSE, help = FALSE, root = root)
   i <- 1L
   while (i <= length(args)) {
     key <- args[[i]]
@@ -199,14 +175,13 @@ run_income_pipeline <- function(options) {
   hashes <- if (is.null(options$source_hash)) unname(tools::md5sum(source_paths)) else options$source_hash
   verify_unchanged(source_paths, hashes, "Code, protocol, or lockfile")
   package_versions <- check_locked_packages(options$root)
-  prepare_income_output(options$output)
+  if (file.exists(options$output) && !dir.exists(options$output)) stop("Output path is a file.")
+  if (dir.exists(options$output) && length(list.files(options$output, all.files = TRUE, no.. = TRUE)))
+    stop("Output directory is not empty. Choose a new output path to preserve prior results.")
   if (options$download) download_adult(options$data_dir)
   inputs <- file.path(options$data_dir, c("adult.data", "adult.test"))
   input_hash <- unname(tools::md5sum(inputs))
   partitions <- prepare_partitions(read_adult(inputs[1L], "train"), read_adult(inputs[2L], "test"))
-  official <- all(input_hash == adult_checksums[basename(inputs)])
-  test_status <- if (official) "reused_benchmark" else "custom_evaluation_history_unknown"
-  test_partition <- if (official) "reused_test" else "custom_test"
   train <- partitions$train; test <- partitions$test
   if (options$smoke) {
     train <- stratified_limit(train, 1200L, options$seed)
@@ -215,12 +190,13 @@ run_income_pipeline <- function(options) {
     options$folds <- min(options$folds, 3L)
     options$bootstrap <- min(options$bootstrap, 40L)
   }
+  dir.create(options$output, recursive = TRUE, showWarnings = FALSE)
   csv <- function(data, file) write_income_csv(data, file.path(options$output, file))
   warnings <- character()
   started <- format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
   result <- withCallingHandlers({
     bundle <- train_income_models(train, options$folds, options$seed, options$trees, options$smoke)
-    message("Evaluate the test sample and compute cluster-bootstrap uncertainty")
+    message("Evaluate on reused benchmark test and compute cluster-bootstrap uncertainty")
     evaluation <- evaluate_income_models(bundle, test, options$bootstrap, options$seed + 1000L)
     list(bundle = bundle, evaluation = evaluation)
   }, warning = function(w) {
@@ -249,14 +225,15 @@ run_income_pipeline <- function(options) {
     csv(bundle[[name]], paste0(name, ".csv"))
   csv(partitions$audit, "data_audit.csv")
   csv(rbind(data.frame(row_id = train$row_id, partition = "training"),
-    data.frame(row_id = test$row_id, partition = test_partition)), "split_assignments.csv")
-  csv(rbind(bundle$unseen_categories, unseen_categories(bundle$preprocessor, test, test_partition)), "unseen_categories.csv")
+    data.frame(row_id = test$row_id, partition = "reused_test")), "split_assignments.csv")
+  csv(rbind(bundle$unseen_categories, unseen_categories(bundle$preprocessor, test, "reused_test")), "unseen_categories.csv")
+  official <- all(input_hash == adult_checksums[basename(inputs)])
   csv(data.frame(file = basename(inputs), md5 = input_hash, bytes = file.info(inputs)$size,
     matches_uci_reference = input_hash == adult_checksums[basename(inputs)],
     reference_url = paste0(adult_base_url, basename(inputs))), "input_manifest.csv")
   csv(data.frame(file = sources, md5 = hashes), "source_manifest.csv")
   csv(package_versions, "package_versions.csv")
-  write_run_methodology(options, official, nrow(train), nrow(test))
+  file.copy(file.path(options$root, "docs/METHODOLOGY_V2.md"), file.path(options$output, "methodology.md"))
   saveRDS(bundle, file.path(options$output, "models.rds"))
   writeLines(capture.output(utils::sessionInfo()), file.path(options$output, "session_info.txt"))
   writeLines(if (length(warnings)) unique(warnings) else "No model warnings recorded.", file.path(options$output, "warnings.txt"))
@@ -269,9 +246,8 @@ run_income_pipeline <- function(options) {
     paste("completed_utc:", format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")),
     paste("mode:", if (options$smoke) "smoke" else "full"), paste("seed:", options$seed),
     paste("trees:", options$trees), paste("folds:", options$folds), paste("bootstrap_replicates:", options$bootstrap),
-    paste("reference_settings:", if (any(income_run_settings(options)$changed)) "modified" else "matching"),
     "selection_metric: mean_fold_balanced_accuracy", "positive_class: >50K", "thresholds: probability>0.5,margin>0",
-    "rng: Mersenne-Twister,Inversion,Rejection", "collation: C", paste("test_status:", test_status),
+    "rng: Mersenne-Twister,Inversion,Rejection", "collation: C", "test_status: reused_benchmark",
     "numeric_transform: log1p_capitalgain_capitalloss_then_training_imputation_scaling",
     "excluded_features: education,fnlwgt", "sample_weights: none",
     "bootstrap_unit: raw_14_predictor_signature", "bootstrap_scope: conditional_on_fitted_models"),
