@@ -45,6 +45,15 @@ verify_results_summary <- function(root = getwd(), quiet = FALSE) {
     utils::read.csv, stringsAsFactors = FALSE, check.names = FALSE), inputs)
   expected_tables <- module$build_results_summary(raw_tables)
   if (!identical(names(expected_tables), outputs)) reject("unexpected derived-table contract.")
+  read_stored_table <- function(name) {
+    # Never infer row names from an extra leading field or silently repair rows.
+    # Keep read.csv's published NA semantics while retaining duplicate headers
+    # for the exact schema comparison below.
+    tryCatch(utils::read.csv(file.path(destination, paste0(name, ".csv")),
+      stringsAsFactors = FALSE, check.names = FALSE, row.names = NULL,
+      fill = FALSE, blank.lines.skip = FALSE, comment.char = ""),
+      error = function(error) reject(paste0(name, ": invalid CSV: ", conditionMessage(error))))
+  }
   compare_table <- function(actual, expected, name) {
     if (!identical(names(actual), names(expected)) || nrow(actual) != nrow(expected))
       reject(paste0(name, ": schema or row count mismatch."))
@@ -63,14 +72,12 @@ verify_results_summary <- function(root = getwd(), quiet = FALSE) {
     invisible(TRUE)
   }
   for (name in outputs) {
-    actual <- utils::read.csv(file.path(destination, paste0(name, ".csv")),
-      stringsAsFactors = FALSE, check.names = FALSE)
+    actual <- read_stored_table(name)
     compare_table(actual, expected_tables[[name]], name)
   }
   catalog <- module$summary_figure_catalog()
   if (nrow(catalog) != 10L || !identical(catalog$file, figure_names)) reject("unexpected figure catalog order.")
-  stored_catalog <- utils::read.csv(file.path(destination, "figure_catalog.csv"),
-    stringsAsFactors = FALSE, check.names = FALSE)
+  stored_catalog <- read_stored_table("figure_catalog")
   compare_table(stored_catalog, catalog, "figure_catalog")
   if (!quiet) cat("Verified 29 summary files (28 manifest hashes/sizes), 20 provenance records, 11 derived tables, and 10 catalog entries.\n")
   invisible(TRUE)

@@ -141,6 +141,7 @@ These are descriptive views of the same verified published results. No models, t
 ```sh
 Rscript --vanilla scripts/create_results_summary.R docs/evidence/v2-full-2026-10-08 results/new-results-summary
 Rscript --vanilla tests/test_results_summary.R
+Rscript --vanilla tests/test_results_summary_verifier.R
 Rscript --vanilla scripts/verify_results_summary.R
 ```
 
