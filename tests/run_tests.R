@@ -290,6 +290,40 @@ run_income_tests <- function() {
     expect_error(run_income_pipeline(options),"file")
     equal(readLines(options$output),"preserve")
     options$output <- fixture_root; expect_error(run_income_pipeline(options),"not empty")
+    options$output <- fixture_dir()
+    options$data_dir <- file.path(fixture_root,"missing-data")
+    expect_error(run_income_pipeline(options),"Missing data file")
+  })
+  check("Output preflight stops before inputs or training and cleans its probe", {
+    parent_file <- fixture_file("preserve parent")
+    options <- parse_options(c("--output",file.path(parent_file,"impossible"),
+      "--data-dir",file.path(fixture_root,"missing-inputs")),root)
+    expect_error(run_income_pipeline(options),"Cannot create output directory")
+    equal(readLines(parent_file),"preserve parent")
+    output <- file.path(fixture_dir(),"new-output")
+    prepare_income_output(output)
+    stopifnot(dir.exists(output),!length(list.files(output,all.files=TRUE,no..=TRUE)))
+    module <- new.env(parent=globalenv())
+    sys.source(file.path(root,"R/pipeline.R"),envir=module)
+    module$writeLines <- function(...) stop("Simulated access denial")
+    expect_error(module$prepare_income_output(output),"not writable")
+    stopifnot(!length(list.files(output,all.files=TRUE,no..=TRUE)))
+  })
+  check("Recorded methodology separates actual settings from the historical plan", {
+    options <- parse_options(c("--output",fixture_dir()),root)
+    write_run_methodology(options,TRUE,32537L,16255L)
+    text <- readLines(file.path(options$output,"methodology.md"))
+    stopifnot("| seed | 12345 | 12345 | Matches |" %in% text,
+      "The four recorded settings match the historical reference plan." %in% text,
+      identical(tail(text,length(readLines(file.path(root,"docs/METHODOLOGY_V2.md")))),
+        readLines(file.path(root,"docs/METHODOLOGY_V2.md"))))
+    options <- parse_options(c("--output",fixture_dir(),"--seed","7","--trees","12",
+      "--folds","2","--bootstrap","20"),root)
+    write_run_methodology(options,FALSE,120L,40L)
+    text <- readLines(file.path(options$output,"methodology.md"))
+    stopifnot(all(c("| seed | 12345 | 7 | Changed |","| trees | 500 | 12 | Changed |",
+      "| folds | 5 | 2 | Changed |","| bootstrap | 1000 | 20 | Changed |") %in% text),
+      any(grepl("CUSTOM",text)),any(grepl("120 training rows and 40 test rows",text)))
   })
   check("CV fits use fold-only preprocessing and select from recorded fold means", {
     module <- new.env(parent=globalenv())
@@ -342,7 +376,7 @@ run_income_tests <- function() {
     input <- fixture_dir(); output <- file.path(fixture_dir(),"completed")
     writeLines(raw_lines(synthetic_adult(120L,808L,"train")),file.path(input,"adult.data"))
     writeLines(raw_lines(synthetic_adult(40L,809L,"test")),file.path(input,"adult.test"))
-    options <- parse_options(c("--data-dir",input,"--output",output,"--smoke","--trees","10","--folds","3","--bootstrap","20"),root)
+    options <- parse_options(c("--data-dir",input,"--output",output,"--smoke","--trees","40","--folds","4","--bootstrap","50"),root)
     invisible(capture.output(suppressMessages(run_income_pipeline(options))))
     stopifnot(all(c(allowlist,private,"artifact_manifest.csv") %in% list.files(output)))
     manifest <- read.csv(file.path(output,"artifact_manifest.csv"))
@@ -363,6 +397,16 @@ run_income_tests <- function() {
         file.info(file.path(output,paste0(plot,".pdf")))$size>1000)
     }
     stopifnot("status: complete" %in% readLines(file.path(output,"run_config.txt")))
+    stopifnot("reference_settings: modified" %in% readLines(file.path(output,"run_config.txt")))
+    methodology <- readLines(file.path(output,"methodology.md"))
+    stopifnot("| trees | 500 | 30 | Changed |" %in% methodology,
+      "| folds | 5 | 3 | Changed |" %in% methodology,
+      "| bootstrap | 1000 | 40 | Changed |" %in% methodology,
+      any(grepl("SMOKE",methodology)),any(grepl("CUSTOM",methodology)),
+      any(grepl("changes settings",readLines(file.path(output,"report.md")))))
+    stopifnot("test_status: custom_evaluation_history_unknown" %in% readLines(file.path(output,"run_config.txt")),
+      "custom_test" %in% read.csv(file.path(output,"split_assignments.csv"))$partition,
+      !any(grepl("On the reused benchmark|evaluating the reused test",readLines(file.path(output,"report.md")))))
     expect_error(export_evidence(output,fixture_dir()),"full runs")
   })
   check("Exporter copies only aggregate evidence and checks public hashes and byte sizes", {

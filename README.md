@@ -13,6 +13,7 @@ Use **R 4.6.1**. The checked-in `renv.lock` records 34 package versions, includi
 ```sh
 Rscript --vanilla scripts/install_dependencies.R
 Rscript --vanilla tests/run_tests.R
+Rscript --vanilla scripts/verify_evidence.R
 Rscript --vanilla IncomeLevelPrediction.R --download --smoke --output results/v2-smoke
 Rscript --vanilla IncomeLevelPrediction.R --download --output results/v2-full
 ```
@@ -38,7 +39,9 @@ Compatible custom inputs can run without `--download`; their reports and figures
 
 A smoke run uses at most 1,200 training and 600 test rows, 30 trees, three folds, 40 bootstrap replicates, and the first candidate per family. Its scores are not full-study evidence.
 
-Default paths are project-local. Without `--output`, the output is `results/v2-YYYYMMDD-HHMMSS` using UTC. Explicit relative paths resolve from the invocation directory. Nonempty output directories are refused; use a new directory for each run.
+Default paths are project-local. Without `--output`, the output is `results/v2-YYYYMMDD-HHMMSS` using UTC. Explicit relative paths resolve from the invocation directory. Nonempty output directories are refused; use a new directory for each run. Creation and write access are checked before downloading or training.
+
+Each new run's `methodology.md` compares effective settings with the historical reference plan and records smoke sampling or custom inputs. Overrides define a separate configuration. Matching the four numeric defaults alone does not establish that source code, inputs, or environment match the published experiment.
 
 ## Evaluation design
 
@@ -90,7 +93,7 @@ At its fixed threshold, the forest missed 1,443 of 3,840 positive records and pr
 
 **Conclusion:** the reproducible comparison exposes tradeoffs among classification, ranking, probability quality, and subgroup errors. It supports the declared CV selection while preserving observed test differences and uncertainty. It does not establish a universal winner or independent confirmation on a fresh population.
 
-The run records 75 successful fits and no model warnings. **All 18 offline checks passed.** Independent auditing reproduced the saved prediction metrics and selection results, verified the manifests, and checked restored-model scoring. All six PNGs and all six rendered PDFs passed visual inspection. The [validation record](docs/VALIDATION.md) documents the checks and their scope.
+The published run records 75 successful fits and no model warnings; its 18-check regression suite passed before publication. Independent auditing reproduced the saved prediction metrics and selection results, verified the manifests, and checked restored-model scoring. All six PNGs and all six rendered PDFs passed visual inspection. The [validation record](docs/VALIDATION.md) separates that historical validation from subsequent maintenance checks.
 
 ## Evidence and figures
 
@@ -121,15 +124,21 @@ Six `ggplot2` figures are exported as **2400 x 1500 PNGs** and matching **12 x 7
 
 The workflow snapshots nine source, protocol, and lockfile hashes plus input hashes before fitting, then verifies them again before finalizing. Changed files prevent successful finalization. Run and public manifests record output hashes and byte sizes.
 
+The [preserved version 2 source](archive/v2-2026-10-08/README.md) matches the published run's nine source hashes. Current maintenance code has different hashes. `scripts/verify_evidence.R` checks committed evidence and archived provenance on both CI platforms without downloading records or fitting models. For the complete original checkout, use publication commit `2ab72d12cf5290df1841da70b524740a70718c17` in a separate checkout.
+
+The [supplemental uncertainty figures](docs/figures/v2-uncertainty-review/README.md) redraw the same saved estimates and intervals with clearer markers and all paired comparisons. They do not replace the original figures or report a new experiment.
+
+![Paired model differences with conditional 95% intervals](docs/figures/v2-uncertainty-review/paired_differences.png)
+
 ## Export aggregate evidence
 
 After completing and inspecting a full run:
 
 ```sh
-Rscript --vanilla scripts/export_evidence.R results/v2-full-2026-10-08 docs/evidence/v2-full-2026-10-08
+Rscript --vanilla scripts/export_evidence.R results/v2-full results/v2-full-public
 ```
 
-Use the actual run directory and a new destination. The exporter verifies artifact integrity, complete version 2 status, official input checksums, and successful model diagnostics. It copies a fixed allowlist of aggregate outputs and checks the copied files. Record-level predictions, fold identifiers, fitted models, and session details stay local.
+Use the actual run directory and a new destination; the example matches the full-run command above and keeps the review copy in ignored `results/`. The exporter verifies artifact integrity, complete version 2 status, official input checksums, and successful model diagnostics. It copies a fixed allowlist of aggregate outputs and checks the copied files. Read the run-specific methodology before interpreting an export with modified settings. Record-level predictions, fold identifiers, fitted models, and session details stay local.
 
 The default `data/raw/`, `results/`, and `.R-library/` directories are ignored by Git. Custom output directories require separate publication review. A checksum match establishes file integrity, not scientific validity or privacy review.
 
@@ -143,13 +152,13 @@ Version 1 corrected that workflow. Version 2 changes training retention, selecti
 IncomeLevelPrediction.R          Command-line entry point
 R/                              Data, models, evaluation, plots, reporting
 renv.lock                       R and package version record
-scripts/                        Environment restore and evidence export
+scripts/                        Restore, export, verification, supplemental plots
 tests/                          Offline regression checks
 data/README.md                  Source and processing policy
 docs/METHODOLOGY_V2.md           Declared version 2 protocol
 docs/VALIDATION.md               Observed checks and limits
 docs/PORTFOLIO_HANDOFF.md        Copy and image specifications
-archive/                        Original script and version 1 snapshot
+archive/                        Original script, v1 snapshot, published v2 source
 ```
 
 The revised project is maintained in the public repository [efkopru/income-level-prediction](https://github.com/efkopru/income-level-prediction). Hosted Windows/Linux check results are available in [GitHub Actions](https://github.com/efkopru/income-level-prediction/actions/workflows/check.yml).

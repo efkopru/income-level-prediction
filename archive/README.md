@@ -20,4 +20,16 @@ Version 1 excluded two training rows with conflicting labels and used one intern
 
 The current R 4.6.1 environment and 34-package `renv.lock` belong to version 2. They do not retroactively lock the archived version 1 environment. Consult the snapshot's own README, runtime records, and manifests when interpreting its results.
 
+Two historical relative links no longer resolve from the relocated snapshot. The `archive/IncomeLevelPrediction_original.R` link in [`v1-2026-10-08/README.md`](v1-2026-10-08/README.md) and the `../archive/IncomeLevelPrediction_original.R` link in [`v1-2026-10-08/docs/CODE_REVIEW.md`](v1-2026-10-08/docs/CODE_REVIEW.md) both refer to the [original script preserved here](IncomeLevelPrediction_original.R). Their correct targets from those archived documents would be `../IncomeLevelPrediction_original.R` and `../../IncomeLevelPrediction_original.R`, respectively. This note supplies the corrected destinations while preserving the 30 snapshot files and their published hashes.
+
+## Version 2 evidence source snapshot
+
+[`v2-2026-10-08`](v2-2026-10-08/) preserves the nine source files recorded in the [published v2 source manifest](../docs/evidence/v2-full-2026-10-08/source_manifest.csv), byte for byte, before subsequent maintenance. It includes the entry point, six R modules, the methodology document, and `renv.lock`. It is a source-provenance snapshot for that completed run, not a second completed model run or a full checkout. Published evidence remains in [`docs/evidence/v2-full-2026-10-08`](../docs/evidence/v2-full-2026-10-08/).
+
+Run `Rscript --vanilla scripts/verify_evidence.R` from the repository root to verify public artifact hashes and byte sizes, the version 1 SHA-256 snapshot, the original script's published SHA-256, both versions' source provenance, declared input references, and recorded package evidence. Version 1 source hashes resolve against `archive/v1-2026-10-08`; version 2 source hashes resolve against `archive/v2-2026-10-08`, not the maintained current source. The verifier uses base R 4.6.1 and the locked `renv` dependency and does not download inputs, install packages, fit models, or rewrite evidence. Input checks validate the published reference declarations; they do not claim to recheck absent raw data. Version 1 has observed package records without a lockfile; version 2 package records are checked against the preserved lockfile.
+
+The verifier also checks the separately committed [supplemental uncertainty figures](../docs/figures/v2-uncertainty-review/) against their output manifest, aggregate input hashes, and current renderer and plotting-source hashes. This provenance is separate from the preserved full-run source.
+
+The standalone fixture checks run with `Rscript --vanilla tests/test_evidence_verifier.R`. Both commands run in the Windows and Linux CI jobs before the existing offline tests and downloaded-data smoke run. CI also runs `Rscript --vanilla tests/test_review_plots.R` for the supplemental rendering checks.
+
 No original authorship or deployment claim has been expanded by this modernization.

@@ -71,11 +71,12 @@ Commands from the repository root:
 ```sh
 Rscript --vanilla scripts/install_dependencies.R
 Rscript --vanilla tests/run_tests.R
-Rscript --vanilla IncomeLevelPrediction.R --download --output results/v2-full-2026-10-08
-Rscript --vanilla scripts/export_evidence.R results/v2-full-2026-10-08 docs/evidence/v2-full-2026-10-08
+Rscript --vanilla scripts/verify_evidence.R
+Rscript --vanilla IncomeLevelPrediction.R --download --output results/v2-reproduction
+Rscript --vanilla scripts/export_evidence.R results/v2-reproduction results/v2-reproduction-public
 ```
 
-Use a new output directory when rerunning. The exporter requires a completed version 2 full run, official input checksums, successful model diagnostics, and artifact hashes and byte sizes that match the manifest. It copies a fixed allowlist and verifies the copies. Raw data, record-level and out-of-fold predictions, fold identifiers, model objects, session details, and local dependencies remain outside the public export.
+Use new run and export directories when rerunning. Both example destinations are local review copies under ignored `results/`; neither overwrites committed evidence. Current maintenance code records deviations from reference settings in `methodology.md`. Exact historical code is preserved under `archive/v2-2026-10-08`, with the complete original checkout available at commit `2ab72d12cf5290df1841da70b524740a70718c17`. The exporter requires a completed version 2 full run, official input checksums, successful model diagnostics, and artifact hashes and byte sizes that match the manifest. It copies a fixed allowlist and verifies the copies. Raw data, record-level and out-of-fold predictions, fold identifiers, model objects, session details, and local dependencies remain outside the public export.
 
 Run provenance covers the entry point, six R modules, protocol, and lockfile, plus the two data inputs. Changes during execution prevent finalization. File integrity checks do not replace scientific review, figure inspection, or review of publication contents.
 
@@ -93,6 +94,8 @@ The six figures were generated in R with `ggplot2` and exported with the complet
 | Subgroup recall | [PNG](evidence/v2-full-2026-10-08/subgroup_recall.png) / [PDF](evidence/v2-full-2026-10-08/subgroup_recall.pdf) | Recall for recorded sex and race groups, with positive-class denominators and descriptive 95% Wilson intervals; these comparisons do not certify fairness. |
 
 Copy assets from `docs/evidence/v2-full-2026-10-08/` into the portfolio assets directory. Preserve the PNG originals and offer the matching PDFs as accessible download links. Keep dataset attribution in the technical details. These plots belong to the revised project and must not be labeled as original historical slides.
+
+Two [supplemental uncertainty figures](figures/v2-uncertainty-review/README.md) redraw the original aggregate tables without changing estimates or intervals. The updated metric comparison exposes narrow intervals; the paired-difference figure shows all six trained-model pairs across five metrics, with zero as the reference. Positive values mean model A minus model B. Use these in an explicitly labeled supplement with the same 2400 x 1500 dimensions and gallery behavior below. Preserve the original six-figure evidence gallery and identify the supplement as a presentation update, not a new model run.
 
 ## Layout and interaction specifications
 

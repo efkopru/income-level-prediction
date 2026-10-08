@@ -1,0 +1,8 @@
+"role","file","bytes","md5"
+"published_aggregate","docs/evidence/v2-full-2026-10-08/metrics.csv",1545,"57fd6823e1643248069add6205ce1c24"
+"published_aggregate","docs/evidence/v2-full-2026-10-08/metric_intervals.csv",2279,"da674a614547ba53c2db5760011215a5"
+"published_aggregate","docs/evidence/v2-full-2026-10-08/paired_differences.csv",3309,"679a4941a561df3b883e975cef757fce"
+"published_aggregate","docs/evidence/v2-full-2026-10-08/bootstrap_design.csv",189,"174a65cee06d6ed5e40a3b0a7c6c0540"
+"published_manifest","docs/evidence/v2-full-2026-10-08/public_artifact_manifest.csv",2105,"ead576069887a5eda6f6e749473a8753"
+"render_source","scripts/render_evidence_figures.R",15110,"058ea0a0545e139e6ec257862a8eac12"
+"render_source","R/plots.R",24182,"0438d85f2d3e374638ff4fd67bfecc7e"
