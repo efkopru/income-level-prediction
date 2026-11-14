@@ -169,7 +169,7 @@ The scorecard change is cosmetic. Its legend title overlapped the first colorbar
 
 ### Script startup and run metadata
 
-R's Unix front end reports a script path with each space written as `~+~`. On Linux and macOS, each entry point would therefore resolve a nonexistent project root when the repository path contains a space. All eleven self-locating scripts now decode that form. This failure was not observed directly: the Windows front end passes spaces unchanged, and a run from a spaced path succeeded on the machine used here both before and after the change. Two new subprocess checks run the pipeline entry point and the evidence verifier from directories containing spaces; the Linux CI job is where they first exercise the Unix form.
+R's Unix front end reports a script path with each space written as `~+~`. On Linux and macOS, each entry point would therefore resolve a nonexistent project root when the repository path contains a space. All eleven self-locating scripts now decode that form. This failure was not observed directly: the Windows front end passes spaces unchanged, and a run from a spaced path succeeded on the machine used here both before and after the change. Two new subprocess checks run the pipeline entry point and the evidence verifier from directories containing spaces. Both passed in the hosted Linux and Windows jobs. A pass shows that the scripts start from a spaced path on Linux; it does not show that the earlier code failed there.
 
 New runs record `r_version` and `platform` in `run_config.txt`. Exported evidence previously named no base R version, because `package_versions.csv` covers lockfile packages only and `session_info.txt` stays local.
 
@@ -184,4 +184,6 @@ New runs record `r_version` and `platform` in `run_config.txt`. Exported evidenc
 | Results summary verifier suite | 9 checks passed |
 | `scripts/verify_evidence.R` and `scripts/verify_results_summary.R` | Passed after regeneration |
 
-All suites ran locally under R 4.6.1 on Windows with `--vanilla`, `LC_ALL=C`, and `TZ=UTC`. The new device check renders one plot through the shared helper and directly on `grDevices::png` and requires identical bytes; against the previous `ggsave()` call it fails on a machine with `ragg` installed. Hosted CI had not run on this revision when this record was written.
+All suites ran locally under R 4.6.1 on Windows with `--vanilla`, `LC_ALL=C`, and `TZ=UTC`. The new device check renders one plot through the shared helper and directly on `grDevices::png` and requires identical bytes; against the previous `ggsave()` call it fails on a machine with `ragg` installed.
+
+Hosted checks for commit `7704f7c` then passed in all four Windows and Linux jobs on [PR #3](https://github.com/efkopru/income-level-prediction/pull/3). Both platforms reported the same five check counts, with no plot check skipped, and completed the downloaded-data smoke run. Hosted results for later revisions are recorded on that pull request.
