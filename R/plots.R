@@ -50,11 +50,27 @@ income_model_factor <- function(model, reverse = FALSE) {
   factor(model, levels = if (reverse) rev(order) else order)
 }
 
+# Left to choose, ggsave() renders PNGs with ragg whenever that package is
+# installed anywhere on the library path, including outside the locked project
+# library. Text metrics and every output byte then depend on an unrecorded
+# package. Naming the base device ties rendering to the recorded R version.
+save_income_png <- function(plot, path) {
+  ggplot2::ggsave(path, plot = plot, device = grDevices::png, width = 12, height = 7.5,
+    units = "in", dpi = 200, bg = "#FAFBFD", limitsize = TRUE)
+  invisible(path)
+}
+
+# PNG bytes still differ between operating systems: the base device draws through
+# GDI on Windows and through the session's bitmap backend elsewhere.
+income_png_device_label <- function() {
+  backend <- if (.Platform$OS.type == "windows") "windows" else as.character(getOption("bitmapType"))
+  paste0("grDevices::png (", backend, " backend)")
+}
+
 save_income_figure <- function(plot, directory, name) {
   paths <- c(png = file.path(directory, paste0(name, ".png")),
     pdf = file.path(directory, paste0(name, ".pdf")))
-  ggplot2::ggsave(paths[["png"]], plot = plot, width = 12, height = 7.5,
-    units = "in", dpi = 200, bg = "#FAFBFD", limitsize = TRUE)
+  save_income_png(plot, paths[["png"]])
   ggplot2::ggsave(paths[["pdf"]], plot = plot, width = 12, height = 7.5,
     units = "in", device = grDevices::pdf, useDingbats = FALSE, bg = "#FAFBFD")
   paths

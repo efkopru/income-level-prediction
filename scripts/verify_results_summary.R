@@ -84,7 +84,8 @@ verify_results_summary <- function(root = getwd(), quiet = FALSE) {
 }
 
 if (sys.nframe() == 0L) {
-  invocation <- grep("^--file=", commandArgs(FALSE), value = TRUE)
+  # R's Unix front end passes each space in the script path as "~+~".
+  invocation <- gsub("~+~", " ", grep("^--file=", commandArgs(FALSE), value = TRUE), fixed = TRUE)
   root <- if (length(invocation)) dirname(dirname(normalizePath(sub("^--file=", "", invocation[1L])))) else getwd()
   args <- commandArgs(TRUE)
   if (length(args)) {

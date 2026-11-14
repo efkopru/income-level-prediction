@@ -79,8 +79,8 @@ create_results_summary <- function(source, destination, root = getwd()) {
     utils::write.csv(data, file.path(destination, name), row.names = FALSE, na = "")
   }
   for (name in names(summaries)) write_csv(summaries[[name]], paste0(name, ".csv"))
-  for (name in names(plots)) ggplot2::ggsave(file.path(destination, paste0(name, ".png")),
-    plot = plots[[name]], width = 12, height = 7.5, units = "in", dpi = 200, bg = "#FAFBFD")
+  # R/plots.R names the base PNG device so an unlocked ragg install cannot change output.
+  for (name in names(plots)) module$save_income_png(plots[[name]], file.path(destination, paste0(name, ".png")))
   pdf_open <- FALSE
   on.exit(if (pdf_open) grDevices::dev.off(), add = TRUE)
   grDevices::pdf(file.path(destination, "results_summary.pdf"), width = 12, height = 7.5,
@@ -106,7 +106,8 @@ create_results_summary <- function(source, destination, root = getwd()) {
     "model_refit: false", "new_bootstrap: false", "threshold_tuning: false", "original_evidence_modified: false",
     paste("source_directory:", repo_path(source)), paste("R:", R.version.string),
     paste("ggplot2:", as.character(getNamespaceVersion("ggplot2"))), paste("locale:", Sys.getlocale()),
-    "PNG_dimensions: 2400 x 1500 pixels", "PDF: ten pages, 12 x 7.5 inches each",
+    "PNG_dimensions: 2400 x 1500 pixels", paste("PNG_device:", module$income_png_device_label()),
+    "PDF: ten pages, 12 x 7.5 inches each",
     "scope: unweighted reused historical benchmark; additional descriptive statistics, no confirmatory testing"),
     file.path(destination, "render_context.txt"))
   if (!identical(unname(tools::md5sum(paths)), input_hashes) ||
@@ -124,7 +125,8 @@ create_results_summary <- function(source, destination, root = getwd()) {
 if (sys.nframe() == 0L) {
   args <- commandArgs(TRUE)
   if (length(args) != 2L) stop("Usage: Rscript --vanilla scripts/create_results_summary.R SOURCE_EVIDENCE NEW_OUTPUT_DIRECTORY")
-  invocation <- grep("^--file=", commandArgs(FALSE), value = TRUE)
+  # R's Unix front end passes each space in the script path as "~+~".
+  invocation <- gsub("~+~", " ", grep("^--file=", commandArgs(FALSE), value = TRUE), fixed = TRUE)
   root <- dirname(dirname(normalizePath(sub("^--file=", "", invocation[1L]))))
   create_results_summary(args[1L], args[2L], root)
 }

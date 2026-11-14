@@ -230,7 +230,7 @@ run_results_summary_tests <- function(root) {
 }
 
 if (sys.nframe() == 0L) {
-  invocation <- grep("^--file=", commandArgs(FALSE), value = TRUE)
+  invocation <- gsub("~+~", " ", grep("^--file=", commandArgs(FALSE), value = TRUE), fixed = TRUE)
   root <- dirname(dirname(normalizePath(sub("^--file=", "", invocation[1L]))))
   run_results_summary_tests(root)
 }

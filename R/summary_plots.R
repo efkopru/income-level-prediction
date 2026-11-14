@@ -52,8 +52,11 @@ summary_plot_scorecard <- function(tables) {
     ggplot2::scale_y_discrete(labels = income_plot_labels, expand = ggplot2::expansion(add = 0.15)) +
     ggplot2::scale_x_discrete(position = "top", expand = ggplot2::expansion(add = 0.05)) +
     summary_plot_theme() +
-    ggplot2::theme(panel.grid = ggplot2::element_blank(), axis.text.x = ggplot2::element_text(size = 11),
-      legend.title = ggplot2::element_text(size = 10)) +
+    # The inherited theme sets panel.grid.major itself, so blank that element directly;
+    # otherwise grid stubs show in the gaps between tiles. The title margin keeps
+    # "Metric value" clear of the first colorbar tick label.
+    ggplot2::theme(panel.grid.major = ggplot2::element_blank(), axis.text.x = ggplot2::element_text(size = 11),
+      legend.title = ggplot2::element_text(size = 10, vjust = 1, margin = ggplot2::margin(r = 16))) +
     ggplot2::guides(fill = ggplot2::guide_colorbar(barwidth = grid::unit(8, "cm"),
       barheight = grid::unit(0.3, "cm"))) +
     ggplot2::labs(title = "Seven metrics give complementary views of performance",
