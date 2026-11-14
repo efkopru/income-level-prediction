@@ -1,4 +1,4 @@
-# Offline methodology-v2 regression checks. Run: Rscript --vanilla tests/run_tests.R
+# Offline methodology-v3 regression checks. Run: Rscript --vanilla tests/run_tests.R
 invocation <- gsub("~+~", " ", grep("^--file=", commandArgs(FALSE), value = TRUE), fixed = TRUE)
 root <- if (length(invocation)) dirname(dirname(normalizePath(sub("^--file=", "", invocation[1L])))) else getwd()
 if (dir.exists(file.path(root, ".R-library"))) .libPaths(c(file.path(root, ".R-library"), .libPaths()))
@@ -70,7 +70,7 @@ run_income_tests <- function() {
   kinds <- c("majority", "logistic", "tree", "forest", "svm")
   plots <- c("model_comparison", "roc_pr_curves", "confusion_matrices", "calibration", "subgroup_recall", "cv_comparison")
   allowlist <- c("report.md", "metrics.csv", "cv_metrics.csv", "cv_summary.csv", "selected_parameters.csv",
-    "diagnostics.csv", "subgroup_metrics.csv", "metric_intervals.csv", "paired_differences.csv", "bootstrap_design.csv", "calibration.csv",
+    "grid_position.csv", "diagnostics.csv", "subgroup_metrics.csv", "metric_intervals.csv", "paired_differences.csv", "bootstrap_design.csv", "calibration.csv",
     "profile_overlap.csv", "profile_sensitivity.csv", "data_audit.csv", "input_manifest.csv", "source_manifest.csv",
     "package_versions.csv", "run_config.txt", "warnings.txt", "unseen_categories.csv", "methodology.md",
     paste0(plots, ".png"), paste0(plots, ".pdf"))
@@ -84,11 +84,11 @@ run_income_tests <- function() {
   export_fixture <- function() {
     directory <- fixture_dir()
     for (file in c(allowlist, private)) writeLines(paste("Synthetic exporter fixture:", file), file.path(directory, file))
-    writeLines(c("mode: full", "methodology_version: 2", "status: complete"), file.path(directory, "run_config.txt"))
+    writeLines(c("mode: full", "methodology_version: 3", "status: complete"), file.path(directory, "run_config.txt"))
     write.csv(data.frame(file = c("adult.data", "adult.test"), md5 = unname(adult_checksums[1:2]),
       matches_uci_reference = TRUE), file.path(directory, "input_manifest.csv"), row.names = FALSE)
     write.csv(data.frame(model = kinds, stage = "final", fit_ok = TRUE,
-      converged = c(NA, TRUE, NA, NA, NA), solver_status = c(NA, 0, NA, NA, NA),
+      converged = c(NA, TRUE, NA, NA, TRUE), solver_status = c(NA, 0, NA, NA, NA),
       finite_parameters = c(NA, TRUE, NA, NA, NA), n_training = 240L, n_features = 20L),
       file.path(directory, "diagnostics.csv"), row.names = FALSE)
     refresh_manifest(directory); directory
@@ -218,6 +218,121 @@ run_income_tests <- function() {
     expect_error(fit_income_model("logistic",x,data$incomelevel,parameter=0),"lambda")
     expect_error(fit_income_model("forest",x,data$incomelevel,parameter=ncol(x)+1),"mtry")
     expect_error(fit_income_model("svm",x,data$incomelevel,parameter=0),"cost")
+    expect_error(fit_income_model("tree",x,data$incomelevel,parameter=-1.5),"cp")
+  })
+  check("Version 3 grid keeps every version 2 candidate in order and appends the declared values", {
+    grid <- candidate_grid()
+    expected <- list(majority="prevalence",
+      logistic=paste0("lambda=",c("0.1","0.01","0.001","1e-04","1e-05","1e-06")),
+      tree=paste0("cp=",c("0.01","0.005","0.001","5e-04","1e-04","5e-05","1e-05","0","-1")),
+      forest=paste0("mtry=",c("sqrt","third","half","two_thirds","all")),
+      svm=paste0("cost=",c("0.1","1","10","30")))
+    stopifnot(identical(unique(grid$model),names(expected)),identical(grid$order,seq_len(25L)),
+      identical(grid$parameter[grid$model=="logistic"],c(.1,.01,.001,.0001,.00001,.000001)),
+      identical(grid$parameter[grid$model=="tree"],c(.01,.005,.001,.0005,.0001,.00005,.00001,0,-1)),
+      identical(grid$parameter[grid$model=="svm"],c(.1,1,10,30)),
+      identical(grid$parameter_rule[grid$model=="forest"],c("sqrt","third","half","two_thirds","all")))
+    for(kind in names(expected)) stopifnot(identical(grid$candidate[grid$model==kind],expected[[kind]]))
+    published <- read.csv(file.path(root,"docs/evidence/v2-full-2026-10-08/cv_summary.csv"),stringsAsFactors=FALSE)
+    for(kind in names(expected)) {
+      old <- published[published$model==kind,,drop=FALSE]
+      stopifnot(identical(head(grid$candidate[grid$model==kind],nrow(old)),old$candidate),
+        identical(head(grid$parameter_rule[grid$model==kind],nrow(old)),old$parameter_rule))
+      equal(head(grid$parameter[grid$model==kind],nrow(old)),old$parameter)
+    }
+    stopifnot(identical(candidate_grid(TRUE)$candidate,c("prevalence","lambda=0.1","cp=0.01","mtry=sqrt","cost=0.1")))
+    rules <- c("sqrt","third","half","two_thirds","all")
+    resolved <- function(p) vapply(rules,function(rule)
+      resolve_parameter(data.frame(parameter_rule=rule,parameter=NA_real_),p),numeric(1))
+    equal(resolved(84),c(9,28,42,56,84)); equal(resolved(83),c(9,27,41,55,83))
+    equal(resolved(2),c(1,1,1,1,2)); equal(resolved(1),rep(1,5))
+  })
+  check("The fully grown tree setting cp = -1 is fitted with the stated growth limits", {
+    data <- synthetic_adult(400L,77L,"tree"); x <- apply_preprocessor(fit_preprocessor(data),data)
+    fit <- function(cp) fit_income_model("tree",x,data$incomelevel,parameter=cp)
+    leaves <- function(model) sum(model$model$frame$var=="<leaf>")
+    grown <- fit(-1); zero <- fit(0)
+    stopifnot(leaves(grown)>leaves(zero),leaves(zero)>=leaves(fit(.01)),
+      identical(predict_income_model(grown,x)$score,predict_income_model(fit(-1e-9),x)$score))
+    control <- grown$model$control
+    stopifnot(control$minsplit==20,control$minbucket==7,control$maxdepth==30,control$xval==0)
+  })
+  check("SVM fits that reach the solver iteration limit stop the run instead of being accepted", {
+    x <- with_income_rng(3L,cbind(a=rnorm(24),b=rnorm(24)))
+    y <- factor(rep(income_levels,length.out=24L),levels=income_levels)
+    expect_error(fit_income_model("svm",x,y,parameter=1e9),"iteration limit")
+    model <- fit_income_model("svm",x,y,parameter=1)
+    stopifnot(isTRUE(model$converged),isTRUE(model_health_table(list(svm=model))$converged))
+    # The capture restores an earlier diversion of the message stream and returns other text.
+    outer <- character(); connection <- textConnection("outer","w",local=TRUE)
+    sink(connection,type="message")
+    inner <- tryCatch(capture_message_stream({message("solver text"); 7}),
+      finally={sink(type="message"); close(connection)})
+    stopifnot(identical(inner$value,7),identical(inner$text,"solver text"),!length(outer))
+    connection <- textConnection("outer","w",local=TRUE); sink(connection,type="message")
+    tryCatch({capture_message_stream(1); message("after capture")},finally={sink(type="message"); close(connection)})
+    stopifnot(identical(outer,"after capture"))
+    expect_error(capture_message_stream(stop("solver failed")),"solver failed")
+    stopifnot(sink.number(type="message")==2L)
+  })
+  check("Grid position follows the declared interior, edge, limit, and plateau rules", {
+    folds <- 1:5
+    scores <- list(
+      logistic=list("lambda=0.1"=rep(.70,5),"lambda=0.01"=rep(.75,5),"lambda=0.001"=c(.7500,.7490,.7495,.7495,.7495)),
+      tree=list("cp=0.01"=rep(.70,5),"cp=0"=rep(.72,5),"cp=-1"=rep(.74,5)),
+      forest=list("mtry=sqrt"=rep(.78,5),"mtry=all"=rep(.70,5)),
+      svm=list("cost=0.1"=rep(.75,5),"cost=1"=.75+c(.002,0,0,.0025,0)))
+    metrics <- do.call(rbind,lapply(names(scores),function(kind) do.call(rbind,lapply(names(scores[[kind]]),function(candidate)
+      data.frame(model=kind,candidate=candidate,fold=folds,balanced_accuracy=scores[[kind]][[candidate]])))))
+    metrics <- metrics[nrow(metrics):1,,drop=FALSE]
+    summary <- unique(metrics[nrow(metrics):1,c("model","candidate")])
+    summary$order <- seq_len(nrow(summary))
+    summary$mean_balanced_accuracy <- vapply(seq_len(nrow(summary)),function(i)
+      mean(metrics$balanced_accuracy[metrics$model==summary$model[i] & metrics$candidate==summary$candidate[i]]),numeric(1))
+    summary$selected <- FALSE
+    for(kind in unique(summary$model)) {
+      rows <- which(summary$model==kind); summary$selected[rows[which.max(summary$mean_balanced_accuracy[rows])]] <- TRUE
+    }
+    result <- grid_position_table(rbind(data.frame(model="majority",candidate="prevalence",order=0L,
+      mean_balanced_accuracy=.5,selected=TRUE),summary),metrics)
+    stopifnot(identical(unique(result$model),c("logistic","tree","forest","svm")))
+    row <- function(kind,side) result[result$model==kind & result$neighbour_side==side,,drop=FALSE]
+    stopifnot(all(result$position[result$model=="logistic"]=="interior"),all(result$bracketed[result$model=="logistic"]),
+      identical(row("logistic","preceding")$margin_label,"separated"),identical(row("logistic","following")$margin_label,"plateau"),
+      row("logistic","following")$folds_selection_higher==4L,row("logistic","following")$folds_tied==1L,
+      identical(result$position[result$model=="tree"],"parameter_limit"),!result$bracketed[result$model=="tree"],
+      identical(result$neighbour_side[result$model=="tree"],"preceding"),identical(row("tree","preceding")$margin_label,"separated"),
+      identical(result$position[result$model=="forest"],"grid_edge"),identical(row("forest","following")$neighbour_candidate,"mtry=all"),
+      identical(result$position[result$model=="svm"],"grid_edge"),identical(row("svm","preceding")$margin_label,"plateau"),
+      row("svm","preceding")$folds_selection_higher==2L,row("svm","preceding")$folds_tied==3L)
+    equal(row("logistic","preceding")$margin,.05); equal(row("logistic","following")$margin,.0005)
+    equal(row("svm","preceding")$margin,.0009)
+    single <- grid_position_table(summary[summary$selected,,drop=FALSE],metrics)
+    stopifnot(all(single$position=="single_candidate"),all(is.na(single$margin)),all(is.na(single$neighbour_candidate)))
+    broken <- metrics[!(metrics$candidate=="lambda=0.001" & metrics$fold==3L),,drop=FALSE]
+    expect_error(grid_position_table(summary,broken),"same validation folds")
+    twice <- summary; twice$selected[twice$candidate=="lambda=0.1"] <- TRUE
+    expect_error(grid_position_table(twice,metrics),"exactly one")
+  })
+  check("Version 2 protocol keeps its published hash and version 3 carries its unchanged lines in order", {
+    published <- read.csv(file.path(root,"docs/evidence/v2-full-2026-10-08/source_manifest.csv"),stringsAsFactors=FALSE)
+    stopifnot(identical(unname(tools::md5sum(file.path(root,"docs/METHODOLOGY_V2.md"))),
+      published$md5[published$file=="docs/METHODOLOGY_V2.md"]))
+    v2 <- readLines(file.path(root,"docs/METHODOLOGY_V2.md")); v3 <- readLines(file.path(root,income_protocol()))
+    replaced <- c(1L,3L,19L,41:44,82L,84L)
+    stopifnot(startsWith(v2[1L],"# Version 2"),startsWith(v2[19L],"The dataset contains no usable person identifier."),
+      all(startsWith(v2[41:44],"| ")),startsWith(v2[82L],"Preserve the original project"),
+      startsWith(v2[84L],"Do not tune this protocol"),!any(v2[replaced] %in% v3))
+    position <- 0L
+    for(line in v2[-replaced][nzchar(v2[-replaced])]) {
+      found <- which(v3==line); found <- found[found>position]
+      if(!length(found)) stop("Version 2 protocol line missing or out of order: ",substr(line,1L,60L))
+      position <- found[1L]
+    }
+    stopifnot(identical(income_protocol(),"docs/METHODOLOGY_V3.md"),income_methodology_version()==3L,
+      income_protocol() %in% income_sources(),!"docs/METHODOLOGY_V2.md" %in% income_sources(),
+      any(grepl('"docs/METHODOLOGY_V3.md"',readLines(file.path(root,"IncomeLevelPrediction.R")),fixed=TRUE)),
+      "## Amendments" %in% v3)
   })
   check("SVM margins orient correctly for either class ordering", {
     x <- cbind(signal=c(-3,-2,-1,1,2,3),other=c(0,1,0,0,1,0))
@@ -315,8 +430,9 @@ run_income_tests <- function() {
     text <- readLines(file.path(options$output,"methodology.md"))
     stopifnot("| seed | 12345 | 12345 | Matches |" %in% text,
       "The four recorded settings match the historical reference plan." %in% text,
-      identical(tail(text,length(readLines(file.path(root,"docs/METHODOLOGY_V2.md")))),
-        readLines(file.path(root,"docs/METHODOLOGY_V2.md"))))
+      identical(tail(text,length(readLines(file.path(root,income_protocol())))),
+        readLines(file.path(root,income_protocol()))),
+      any(grepl("historical version 3",text,fixed=TRUE)))
     options <- parse_options(c("--output",fixture_dir(),"--seed","7","--trees","12",
       "--folds","2","--bootstrap","20"),root)
     write_run_methodology(options,FALSE,120L,40L)
@@ -363,6 +479,12 @@ run_income_tests <- function() {
       oof <- bundle$oof_predictions[bundle$oof_predictions$model==kind,,drop=FALSE]
       stopifnot(nrow(oof)==nrow(train),!anyDuplicated(oof$row_id),setequal(oof$row_id,train$row_id))
     }
+    stopifnot(nrow(bundle$cv_summary)==25L,identical(bundle$grid_position,
+        module$grid_position_table(bundle$cv_summary,bundle$cv_metrics)),
+      identical(unique(bundle$grid_position$model),c("logistic","tree","forest","svm")),
+      all(bundle$grid_position$position %in% c("interior","grid_edge","parameter_limit")),
+      all(bundle$grid_position$selected_candidate==bundle$selected_parameters$candidate[
+        match(bundle$grid_position$model,bundle$selected_parameters$model)]))
     frozen <- serialize(bundle,NULL); test <- synthetic_adult(40L,915L,"test")
     evaluated <- evaluate_income_models(bundle,test,bootstrap_reps=10L,seed=77L)
     changed <- test; changed$incomelevel <- factor(ifelse(test$incomelevel==">50K","<=50K",">50K"),levels=income_levels)
@@ -397,7 +519,13 @@ run_income_tests <- function() {
         file.info(file.path(output,paste0(plot,".pdf")))$size>1000)
     }
     stopifnot("status: complete" %in% readLines(file.path(output,"run_config.txt")))
-    stopifnot("reference_settings: modified" %in% readLines(file.path(output,"run_config.txt")))
+    stopifnot("reference_settings: modified" %in% readLines(file.path(output,"run_config.txt")),
+      "methodology_version: 3" %in% readLines(file.path(output,"run_config.txt")),
+      "grid_plateau_margin: 0.001" %in% readLines(file.path(output,"run_config.txt")))
+    grid <- read.csv(file.path(output,"grid_position.csv"),stringsAsFactors=FALSE)
+    stopifnot(identical(grid$model,c("logistic","tree","forest","svm")),all(grid$position=="single_candidate"),
+      all(is.na(grid$margin)),!any(grid$bracketed),
+      "This run evaluated one candidate per family, so no grid position is assessed." %in% readLines(file.path(output,"report.md")))
     stopifnot(paste("r_version:",as.character(getRversion())) %in% readLines(file.path(output,"run_config.txt")),
       paste("platform:",R.version$platform) %in% readLines(file.path(output,"run_config.txt")))
     methodology <- readLines(file.path(output,"methodology.md"))
@@ -431,7 +559,7 @@ run_income_tests <- function() {
   check("Entry point finds its project from a directory whose path contains spaces", {
     # R's Unix front end reports such a script path with every space written as "~+~".
     project <- file.path(fixture_dir(),"project with spaces")
-    files <- c("IncomeLevelPrediction.R",file.path("R",module_files),"renv.lock","docs/METHODOLOGY_V2.md")
+    files <- c("IncomeLevelPrediction.R",file.path("R",module_files),"renv.lock",income_protocol())
     stopifnot(dir.create(project),dir.create(file.path(project,"R")),dir.create(file.path(project,"docs")),
       all(file.copy(file.path(root,files),file.path(project,files))))
     executable <- file.path(R.home("bin"),if(.Platform$OS.type=="windows") "Rscript.exe" else "Rscript")
@@ -459,16 +587,18 @@ run_income_tests <- function() {
     expect_error(export_evidence(source,fixture_dir()),"byte")
     m$file[1] <- "../outside"; write.csv(m,path,row.names=FALSE)
     expect_error(export_evidence(source,fixture_dir()),"Invalid")
-    for(line in c("mode: smoke","status: running","methodology_version: 1")) {
+    for(line in c("mode: smoke","status: running","methodology_version: 1","methodology_version: 2")) {
       source <- export_fixture(); path <- file.path(source,"run_config.txt"); config <- readLines(path)
       key <- sub(":.*$","",line); config[startsWith(config,paste0(key,":"))] <- line
       writeLines(config,path); refresh_manifest(source)
       expect_error(export_evidence(source,fixture_dir()),"complete")
     }
-    for(defect in c("fit","convergence","finite","solver","missing")) {
+    for(defect in c("fit","convergence","finite","solver","missing","svm_limit","svm_unrecorded")) {
       source <- export_fixture(); path <- file.path(source,"diagnostics.csv"); d <- read.csv(path)
       if(defect=="fit") d$fit_ok[1] <- FALSE
       if(defect=="convergence") d$converged[d$model=="logistic"] <- FALSE
+      if(defect=="svm_limit") d$converged[d$model=="svm"] <- FALSE
+      if(defect=="svm_unrecorded") d$converged[d$model=="svm"] <- NA
       if(defect=="finite") d$finite_parameters[d$model=="logistic"] <- FALSE
       if(defect=="solver") d$solver_status[d$model=="logistic"] <- 1L
       if(defect=="missing") d <- d[-1,]

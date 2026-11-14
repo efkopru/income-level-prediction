@@ -1,7 +1,10 @@
-# Version 2: grouped cross-validation, fixed thresholds, reused-test evaluation.
+# Version 3: version 2's grouped cross-validation, fixed thresholds, and
+# reused-test evaluation, with tuning grids widened past every version 2 edge.
+income_methodology_version <- function() 3L
+income_protocol <- function() "docs/METHODOLOGY_V3.md"
 income_sources <- function() c("IncomeLevelPrediction.R", file.path("R",
   c("data.R", "models.R", "evaluation.R", "plots.R", "reporting.R", "pipeline.R")),
-  "renv.lock", "docs/METHODOLOGY_V2.md")
+  "renv.lock", income_protocol())
 
 income_reference_settings <- function() c(seed = 12345L, trees = 500L, folds = 5L, bootstrap = 1000L)
 
@@ -41,7 +44,7 @@ write_income_csv <- function(data, path) {
 
 parse_options <- function(args, root = getwd()) {
   result <- c(list(data_dir = file.path(root, "data", "raw"),
-    output = file.path(root, "results", format(Sys.time(), "v2-%Y%m%d-%H%M%S", tz = "UTC")),
+    output = file.path(root, "results", format(Sys.time(), "v3-%Y%m%d-%H%M%S", tz = "UTC")),
     smoke = FALSE, download = FALSE, help = FALSE, root = root), as.list(income_reference_settings()))
   i <- 1L
   while (i <= length(args)) {
@@ -64,26 +67,76 @@ parse_options <- function(args, root = getwd()) {
 }
 
 candidate_grid <- function(smoke = FALSE) {
+  # Every version 2 candidate keeps its order; version 3 values are appended.
+  lambda <- c(.1, .01, .001, .0001, .00001, .000001)
+  cp <- c(.01, .005, .001, .0005, .0001, .00005, .00001, 0, -1)
+  mtry <- c("sqrt", "third", "half", "two_thirds", "all")
+  cost <- c(.1, 1, 10, 30)
   grid <- rbind(
     data.frame(model = "majority", candidate = "prevalence", parameter_rule = "none", parameter = NA_real_),
-    data.frame(model = "logistic", candidate = paste0("lambda=", c(.1, .01, .001, .0001)),
-      parameter_rule = "lambda", parameter = c(.1, .01, .001, .0001)),
-    data.frame(model = "tree", candidate = paste0("cp=", c(.01, .005, .001, .0005)),
-      parameter_rule = "cp", parameter = c(.01, .005, .001, .0005)),
-    data.frame(model = "forest", candidate = c("mtry=sqrt", "mtry=third"),
-      parameter_rule = c("sqrt", "third"), parameter = NA_real_),
-    data.frame(model = "svm", candidate = paste0("cost=", c(.1, 1, 10)),
-      parameter_rule = "cost", parameter = c(.1, 1, 10)))
+    data.frame(model = "logistic", candidate = paste0("lambda=", lambda), parameter_rule = "lambda", parameter = lambda),
+    data.frame(model = "tree", candidate = paste0("cp=", cp), parameter_rule = "cp", parameter = cp),
+    data.frame(model = "forest", candidate = paste0("mtry=", mtry), parameter_rule = mtry, parameter = NA_real_),
+    data.frame(model = "svm", candidate = paste0("cost=", cost), parameter_rule = "cost", parameter = cost))
   grid$order <- seq_len(nrow(grid))
   if (smoke) grid <- grid[!duplicated(grid$model), , drop = FALSE]
   grid
 }
 
 resolve_parameter <- function(candidate, p) {
-  if (candidate$parameter_rule == "none") return(NULL)
-  if (candidate$parameter_rule == "sqrt") return(max(1L, floor(sqrt(p))))
-  if (candidate$parameter_rule == "third") return(max(1L, floor(p / 3L)))
+  rule <- candidate$parameter_rule
+  if (rule == "none") return(NULL)
+  if (rule == "sqrt") return(max(1L, floor(sqrt(p))))
+  if (rule == "third") return(max(1L, floor(p / 3L)))
+  if (rule == "half") return(max(1L, floor(p / 2L)))
+  if (rule == "two_thirds") return(max(1L, floor(2L * p / 3L)))
+  if (rule == "all") return(max(1L, floor(p)))
   candidate$parameter
+}
+
+# Declared in docs/METHODOLOGY_V3.md before the version 3 run.
+grid_plateau_margin <- function() 0.001
+grid_limit_candidates <- function() c(tree = "cp=-1", forest = "mtry=all")
+
+# Record where each tuned family's selection sits in its declared grid and its
+# paired fold margin over every adjacent candidate. Descriptive only: the
+# selection itself is unchanged by these labels.
+grid_position_table <- function(cv_summary, cv_metrics, margin = grid_plateau_margin()) {
+  rows <- list()
+  for (kind in setdiff(unique(cv_summary$model), "majority")) {
+    family <- cv_summary[cv_summary$model == kind, , drop = FALSE]
+    family <- family[order(family$order), , drop = FALSE]
+    chosen <- which(family$selected)
+    if (length(chosen) != 1L) stop("Each tuned family needs exactly one selected candidate.")
+    n <- nrow(family)
+    position <- if (n == 1L) "single_candidate" else if (chosen > 1L && chosen < n) "interior" else
+      if (family$candidate[chosen] %in% grid_limit_candidates()[kind]) "parameter_limit" else "grid_edge"
+    scores <- function(candidate) {
+      rows <- cv_metrics[cv_metrics$model == kind & cv_metrics$candidate == candidate, , drop = FALSE]
+      rows[order(rows$fold), c("fold", "balanced_accuracy"), drop = FALSE]
+    }
+    selected <- scores(family$candidate[chosen])
+    base <- data.frame(model = kind, selected_candidate = family$candidate[chosen],
+      selected_index = chosen, n_candidates = n, position = position, bracketed = position == "interior")
+    neighbours <- c(preceding = chosen - 1L, following = chosen + 1L)
+    neighbours <- neighbours[neighbours >= 1L & neighbours <= n]
+    if (!length(neighbours)) rows[[length(rows) + 1L]] <- cbind(base, neighbour_side = NA_character_,
+      neighbour_candidate = NA_character_, nfolds = NA_integer_, margin = NA_real_,
+      folds_selection_higher = NA_integer_, folds_tied = NA_integer_, margin_label = NA_character_)
+    for (side in names(neighbours)) {
+      other <- scores(family$candidate[neighbours[[side]]])
+      if (!nrow(selected) || !identical(selected$fold, other$fold))
+        stop("Adjacent candidates must have scores on the same validation folds.")
+      difference <- selected$balanced_accuracy - other$balanced_accuracy
+      rows[[length(rows) + 1L]] <- cbind(base, neighbour_side = side,
+        neighbour_candidate = family$candidate[neighbours[[side]]], nfolds = length(difference),
+        margin = mean(difference), folds_selection_higher = sum(difference > 0),
+        folds_tied = sum(difference == 0), margin_label = if (mean(difference) < margin) "plateau" else "separated")
+    }
+  }
+  result <- do.call(rbind, rows)
+  rownames(result) <- NULL
+  result
 }
 
 train_income_models <- function(train, folds = 5L, seed = 12345L, trees = 500L, smoke = FALSE) {
@@ -162,7 +215,8 @@ train_income_models <- function(train, folds = 5L, seed = 12345L, trees = 500L, 
   final_health$stage <- "final"
   final_health$candidate <- selected$candidate[match(final_health$model, selected$model)]
   list(preprocessor = final_prep, models = models, cv_metrics = cv,
-    cv_summary = cv_summary, selected_parameters = selected, oof_predictions = all_oof,
+    cv_summary = cv_summary, selected_parameters = selected,
+    grid_position = grid_position_table(cv_summary, cv), oof_predictions = all_oof,
     fold_assignments = data.frame(row_id = train$row_id, fold = fold,
       class = train$incomelevel, group_id = match(predictor_signature(train), unique(predictor_signature(train)))),
     unseen_categories = do.call(rbind, novelty), diagnostics = rbind(do.call(rbind, diagnostics), final_health))
@@ -245,7 +299,8 @@ run_income_pipeline <- function(options) {
   evaluation$profile_sensitivity <- do.call(rbind, sensitivity)
   for (name in c("metrics", "predictions", "subgroup_metrics", "metric_intervals", "paired_differences",
                  "calibration", "profile_overlap", "profile_sensitivity", "bootstrap_design")) csv(evaluation[[name]], paste0(name, ".csv"))
-  for (name in c("cv_metrics", "cv_summary", "selected_parameters", "oof_predictions", "fold_assignments", "diagnostics"))
+  for (name in c("cv_metrics", "cv_summary", "selected_parameters", "grid_position", "oof_predictions",
+                 "fold_assignments", "diagnostics"))
     csv(bundle[[name]], paste0(name, ".csv"))
   csv(partitions$audit, "data_audit.csv")
   csv(rbind(data.frame(row_id = train$row_id, partition = "training"),
@@ -265,12 +320,13 @@ run_income_pipeline <- function(options) {
   # Finalize provenance after graphics and reports as well as model fitting.
   verify_unchanged(inputs, input_hash, "Input data")
   verify_unchanged(source_paths, hashes, "Code, protocol, or lockfile")
-  writeLines(c("methodology_version: 2", "status: complete", paste("started_utc:", started),
+  writeLines(c(paste("methodology_version:", income_methodology_version()), "status: complete", paste("started_utc:", started),
     paste("completed_utc:", format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")),
     paste("mode:", if (options$smoke) "smoke" else "full"), paste("seed:", options$seed),
     paste("trees:", options$trees), paste("folds:", options$folds), paste("bootstrap_replicates:", options$bootstrap),
     paste("reference_settings:", if (any(income_run_settings(options)$changed)) "modified" else "matching"),
-    "selection_metric: mean_fold_balanced_accuracy", "positive_class: >50K", "thresholds: probability>0.5,margin>0",
+    "selection_metric: mean_fold_balanced_accuracy", paste("grid_plateau_margin:", grid_plateau_margin()),
+    "positive_class: >50K", "thresholds: probability>0.5,margin>0",
     "rng: Mersenne-Twister,Inversion,Rejection", "collation: C",
     # The exported aggregate evidence otherwise names no base R version: package_versions.csv
     # covers the lockfile packages only, and session_info.txt stays local.

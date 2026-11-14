@@ -50,6 +50,27 @@ validate_income_scalar <- function(value, name, lower = 0, upper = Inf,
   invisible(value)
 }
 
+# Evaluate expr while R's message stream is diverted, then restore any earlier
+# diversion. libsvm reports reaching its iteration limit only on that stream.
+capture_message_stream <- function(expr) {
+  previous <- sink.number(type = "message")
+  captured <- character()
+  stream <- textConnection("captured", "w", local = TRUE)
+  sink(stream, type = "message")
+  active <- TRUE
+  restore <- function() if (active) {
+    active <<- FALSE
+    sink(if (previous == 2L) NULL else getConnection(previous), type = "message")
+    close(stream)
+  }
+  on.exit(restore())
+  value <- expr
+  restore()
+  list(value = value, text = captured)
+}
+
+svm_iteration_limit_text <- "reaching max number of iterations"
+
 fit_income_model <- function(kind, x, y, parameter = NULL,
                              seed = 12345L, trees = 500L) {
   choices <- c("majority", "logistic", "tree", "forest", "svm")
@@ -110,13 +131,16 @@ fit_income_model <- function(kind, x, y, parameter = NULL,
       stop("Install rpart before fitting a decision tree.", call. = FALSE)
     }
     if (is.null(parameter)) parameter <- 0.01
-    validate_income_scalar(parameter, "tree cp")
+    # Every negative cp gives rpart's fully grown tree; the protocol declares it as -1.
+    validate_income_scalar(parameter, "tree cp", lower = -1)
     frame <- as.data.frame(x)
     frame$.income_response <- y
+    # The growth limits are rpart's defaults, stated because they bind at small cp.
     wrapper$model <- rpart::rpart(
       stats::as.formula(".income_response ~ .", env = baseenv()),
       data = frame, method = "class",
-      control = rpart::rpart.control(cp = parameter, xval = 0L)
+      control = rpart::rpart.control(cp = parameter, xval = 0L,
+        minsplit = 20, minbucket = 7, maxdepth = 30)
     )
   } else if (kind == "forest") {
     if (!requireNamespace("ranger", quietly = TRUE)) {
@@ -137,11 +161,20 @@ fit_income_model <- function(kind, x, y, parameter = NULL,
     }
     if (is.null(parameter)) parameter <- 1
     validate_income_scalar(parameter, "SVM cost", strict_lower = TRUE)
-    wrapper$model <- e1071::svm(
+    # e1071 prints libsvm's iteration-limit warning as text: no R warning is
+    # raised and the fitted object records no convergence status.
+    solver <- capture_message_stream(e1071::svm(
       x = x, y = y, kernel = "linear", type = "C-classification",
       cost = parameter, scale = FALSE, probability = FALSE,
       fitted = FALSE, cachesize = 200
-    )
+    ))
+    wrapper$model <- solver$value
+    limit <- grepl(svm_iteration_limit_text, solver$text, fixed = TRUE)
+    other <- solver$text[!limit & nzchar(solver$text)]
+    if (length(other)) message(paste(other, collapse = "\n"))
+    wrapper$converged <- !any(limit)
+    if (!wrapper$converged)
+      stop("Linear SVM reached the libsvm iteration limit; the fit is not accepted.", call. = FALSE)
     # libsvm's binary margin is positive for labels[1]. The labels index the
     # fitted factor levels, so orientation never consults validation/test labels.
     first_label <- wrapper$model$levels[wrapper$model$labels[1L]]

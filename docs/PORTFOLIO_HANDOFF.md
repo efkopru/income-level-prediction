@@ -66,17 +66,17 @@ The full [version 2 protocol](METHODOLOGY_V2.md) defines the experiment. The [va
 
 Independent auditing verified the final and out-of-fold prediction metrics, 70 candidate-fold evaluations across 14 declared candidates, saved-model scoring checks, and file integrity. The completed run has 40 local files; the public export has 35. Provenance verification includes nine source/protocol/lockfile hashes, two input hashes, 34 package versions, the preserved version 1 snapshot, and the original script. All six PNGs and six rendered PDFs were visually checked for complete, readable content.
 
-Commands from the repository root:
+The maintained code now runs the [version 3 protocol](METHODOLOGY_V3.md), a separate experiment with wider tuning grids, so the commands below produce and export a version 3 run, not a version 2 reproduction. Commands from the repository root:
 
 ```sh
 Rscript --vanilla scripts/install_dependencies.R
 Rscript --vanilla tests/run_tests.R
 Rscript --vanilla scripts/verify_evidence.R
-Rscript --vanilla IncomeLevelPrediction.R --download --output results/v2-reproduction
-Rscript --vanilla scripts/export_evidence.R results/v2-reproduction results/v2-reproduction-public
+Rscript --vanilla IncomeLevelPrediction.R --download --output results/v3-reproduction
+Rscript --vanilla scripts/export_evidence.R results/v3-reproduction results/v3-reproduction-public
 ```
 
-Use new run and export directories when rerunning. Both example destinations are local review copies under ignored `results/`; neither overwrites committed evidence. Current maintenance code records deviations from reference settings in `methodology.md`. Exact historical code is preserved under `archive/v2-2026-10-08`, with the complete original checkout available at commit `2ab72d12cf5290df1841da70b524740a70718c17`. The exporter requires a completed version 2 full run, official input checksums, successful model diagnostics, and artifact hashes and byte sizes that match the manifest. It copies a fixed allowlist and verifies the copies. Raw data, record-level and out-of-fold predictions, fold identifiers, model objects, session details, and local dependencies remain outside the public export.
+Use new run and export directories when rerunning. Both example destinations are local review copies under ignored `results/`; neither overwrites committed evidence. Current maintenance code records deviations from reference settings in `methodology.md`. The exact version 2 code is preserved under `archive/v2-2026-10-08`, with the complete original checkout available at commit `2ab72d12cf5290df1841da70b524740a70718c17`. The exporter requires a completed version 3 full run, official input checksums, successful model diagnostics, and artifact hashes and byte sizes that match the manifest. It copies a fixed allowlist and verifies the copies. Raw data, record-level and out-of-fold predictions, fold identifiers, model objects, session details, and local dependencies remain outside the public export.
 
 Run provenance covers the entry point, six R modules, protocol, and lockfile, plus the two data inputs. Changes during execution prevent finalization. File integrity checks do not replace scientific review, figure inspection, or review of publication contents.
 

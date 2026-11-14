@@ -1,5 +1,6 @@
 #!/usr/bin/env Rscript
-# Export only aggregate artifacts from a completed methodology-v2 reference run.
+# Export only aggregate artifacts from a completed methodology-v3 reference run.
+# Earlier versions are published under docs/evidence and are not re-exported.
 export_evidence <- function(source, destination) {
   manifest_path <- file.path(source, "artifact_manifest.csv")
   if (!file.exists(manifest_path)) stop("Source must be a completed run with an artifact manifest.")
@@ -27,17 +28,17 @@ export_evidence <- function(source, destination) {
   plots <- c("model_comparison", "roc_pr_curves", "confusion_matrices", "calibration",
              "subgroup_recall", "cv_comparison")
   files <- c("report.md", "metrics.csv", "cv_metrics.csv", "cv_summary.csv",
-    "selected_parameters.csv", "diagnostics.csv", "subgroup_metrics.csv", "metric_intervals.csv",
+    "selected_parameters.csv", "grid_position.csv", "diagnostics.csv", "subgroup_metrics.csv", "metric_intervals.csv",
     "paired_differences.csv", "bootstrap_design.csv", "calibration.csv", "profile_overlap.csv", "profile_sensitivity.csv",
     "data_audit.csv", "input_manifest.csv", "source_manifest.csv", "package_versions.csv",
     "run_config.txt", "warnings.txt", "unseen_categories.csv", "methodology.md",
     paste0(plots, ".png"), paste0(plots, ".pdf"))
-  if (!all(files %in% manifest$file)) stop("Run lacks expected methodology-v2 evidence files.")
+  if (!all(files %in% manifest$file)) stop("Run lacks expected methodology-v3 evidence files.")
   config <- readLines(file.path(source, "run_config.txt"), warn = FALSE)
-  for (entry in c("mode: full", "methodology_version: 2", "status: complete")) {
+  for (entry in c("mode: full", "methodology_version: 3", "status: complete")) {
     key <- sub(":.*$", "", entry)
     if (sum(startsWith(config, paste0(key, ":"))) != 1L || !entry %in% config)
-      stop("Only complete methodology-v2 full runs can be exported as portfolio evidence.")
+      stop("Only complete methodology-v3 full runs can be exported as portfolio evidence.")
   }
   inputs <- utils::read.csv(file.path(source, "input_manifest.csv"), stringsAsFactors = FALSE)
   reference_hashes <- c(adult.data = "5d7c39d7b8804f071cdd1f2a7c460872",
@@ -63,11 +64,14 @@ export_evidence <- function(source, destination) {
     stop("Run model diagnostics are incomplete or contain unsuccessful fits.")
   final <- diagnostics[diagnostics$stage == "final", , drop = FALSE]
   logistic <- diagnostics[diagnostics$model == "logistic", , drop = FALSE]
+  svm <- diagnostics[diagnostics$model == "svm", , drop = FALSE]
   if (nrow(final) != length(kinds) || anyDuplicated(final$model) ||
       !setequal(final$model, kinds) || !nrow(logistic) ||
       !all(logistic$converged %in% TRUE) || !all(logistic$finite_parameters %in% TRUE) ||
-      anyNA(logistic$solver_status) || any(logistic$solver_status != 0))
-    stop("Run model diagnostics lack successful final models or a converged finite ridge fit.")
+      anyNA(logistic$solver_status) || any(logistic$solver_status != 0) ||
+      !nrow(svm) || !all(svm$converged %in% TRUE))
+    stop("Run model diagnostics lack successful final models, a converged finite ridge fit, ",
+      "or a linear SVM fit within its iteration limit.")
 
   if (!dir.exists(destination) && !dir.create(destination, recursive = TRUE, showWarnings = FALSE))
     stop("Cannot create evidence destination.")
@@ -78,15 +82,16 @@ export_evidence <- function(source, destination) {
   if (anyNA(copied_hashes) || !identical(copied_hashes, manifest$md5[match_rows]) ||
       !all(file.info(file.path(destination, files))$size == manifest$bytes[match_rows]))
     stop("Copied artifacts do not match the completed run; evidence was not finalized.")
-  writeLines(c("# Reviewed aggregate evidence: methodology version 2", "",
+  writeLines(c("# Reviewed aggregate evidence: methodology version 3", "",
     "This folder contains aggregate outputs from one completed full reference-data run.",
     "The report describes additional local artifacts intentionally omitted here:",
     "record-level predictions, out-of-fold predictions, split/fold identifiers, fitted model objects,",
     "and machine-specific session details. Input files are downloaded separately.", "",
     "See methodology.md for the evaluation protocol, run_config.txt for settings and completion,",
     "source_manifest.csv for code hashes, input_manifest.csv for source checksums, and",
-    "package_versions.csv for observed dependency versions. The exporter verifies file integrity",
-    "and recorded model health; these checks do not replace substantive result review.", "",
+    "package_versions.csv for observed dependency versions. grid_position.csv records where each",
+    "selected setting sits in its declared grid. The exporter verifies file integrity and recorded",
+    "model health; these checks do not replace substantive result review.", "",
     "The official test benchmark was reused after prior project iterations. Results describe",
     "historical records and are not a fresh confirmatory test or a current-population estimate."),
     file.path(destination, "README.md"))

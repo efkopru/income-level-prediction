@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # Author: Esad Kopru
-# Version 2. Historical sources and version 1 remain under archive/.
+# Version 3. The original script and the published-run source snapshots remain under archive/.
 main <- function(args = commandArgs(trailingOnly = TRUE)) {
   # R's Unix front end passes each space in the script path as "~+~".
   invocation <- gsub("~+~", " ", grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE), fixed = TRUE)
@@ -8,7 +8,7 @@ main <- function(args = commandArgs(trailingOnly = TRUE)) {
   if (dir.exists(file.path(root, ".R-library"))) .libPaths(c(file.path(root, ".R-library"), .libPaths()))
   modules <- c("data.R", "models.R", "evaluation.R", "plots.R", "reporting.R", "pipeline.R")
   paths <- file.path(root, c("IncomeLevelPrediction.R", file.path("R", modules),
-    "renv.lock", "docs/METHODOLOGY_V2.md"))
+    "renv.lock", "docs/METHODOLOGY_V3.md"))
   hashes <- unname(tools::md5sum(paths))
   environment <- new.env(parent = globalenv())
   for (file in modules) sys.source(file.path(root, "R", file), envir = environment)

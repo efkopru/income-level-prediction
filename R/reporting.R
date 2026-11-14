@@ -5,7 +5,7 @@ write_run_methodology <- function(options, official, n_training, n_test) {
     settings$setting[i], settings$reference[i], settings$actual[i],
     if (settings$changed[i]) "Changed" else "Matches"), character(1))
   text <- c("# Recorded run methodology", "",
-    "The settings and data summary below describe this execution. The historical version 2",
+    "The settings and data summary below describe this execution. The historical version 3",
     "reference plan follows separately; its fixed settings and sample counts must not override this summary.", "",
     paste("Run mode:", if (options$smoke) "**SMOKE: sampled execution check, not benchmark evidence.**" else "full."),
     paste("Inputs:", if (official) "checksum-verified UCI reference files." else
@@ -25,7 +25,7 @@ write_run_methodology <- function(options, official, n_training, n_test) {
     "## Historical reference plan", "",
     "The text below is the original reference plan, retained for context. Any differences listed above",
     "are run-specific deviations; its declaration date is not a preregistration of this execution.", "",
-    readLines(file.path(options$root, "docs/METHODOLOGY_V2.md"), warn = FALSE))
+    readLines(file.path(options$root, income_protocol()), warn = FALSE))
   writeLines(text, file.path(options$output, "methodology.md"))
 }
 
@@ -53,13 +53,29 @@ write_run_report <- function(evaluation, bundle, audit, options, warnings, offic
   probability_rows <- vapply(seq_len(nrow(probability)), function(i) sprintf("| %s | %.4f | %.4f | %s |",
     labels[probability$model[i]], probability$brier_score[i], probability$log_loss[i],
     probability$probability_clipped_n[i]), character(1))
+  grid <- bundle$grid_position
+  shown <- function(value, format = "%s") if (is.na(value)) "not assessed" else sprintf(format, value)
+  grid_rows <- vapply(seq_len(nrow(grid)), function(i) sprintf("| %s | %s | %s (%s of %s) | %s | %s | %s | %s | %s |",
+    labels[grid$model[i]], grid$selected_candidate[i], grid$position[i], grid$selected_index[i],
+    grid$n_candidates[i], if (isTRUE(grid$bracketed[i])) "yes" else "no", shown(grid$neighbour_candidate[i]),
+    shown(grid$margin[i], "%.5f"), if (is.na(grid$nfolds[i])) "not assessed" else
+      sprintf("%s of %s, %s tied", grid$folds_selection_higher[i], grid$nfolds[i], grid$folds_tied[i]),
+    shown(grid$margin_label[i])), character(1))
+  grid_text <- if (all(grid$position == "single_candidate"))
+    "This run evaluated one candidate per family, so no grid position is assessed." else c(
+    "Positions and labels follow the rule declared in the protocol before the run; they do not change any selection.",
+    "Only an interior selection is bracketed by evaluated candidates on both sides. A grid edge is an end of the",
+    "declared grid, so the grid does not bracket that selection. A parameter limit (`cp=-1` or `mtry=all`) is the end",
+    "of the parameter's range, which a wider grid cannot extend. The margin is the mean of the paired fold differences",
+    sprintf("in balanced accuracy, selection minus adjacent candidate. Margins below %s are labelled plateau.",
+      format(grid_plateau_margin())), "These labels are descriptive; they are not significance tests.")
   top_accuracy <- metrics$model[which.max(metrics$accuracy)]
   top_auc <- metrics$model[which.max(metrics$roc_auc)]
   top_ap <- metrics$model[which.max(metrics$average_precision)]
   profile <- evaluation$profile_overlap
   text <- c("# Income Level Prediction Using R: results and conclusion", "",
     if (options$smoke) "**SMOKE RUN. Sampled execution check only; do not use these values as final study results.**" else
-      "**Version 2.** A revised analysis with grouped training cross-validation, probability diagnostics, and uncertainty intervals.", "",
+      "**Version 3.** Version 2's grouped training cross-validation, fixed thresholds, and evaluation, with every tuning grid widened past its version 2 edge.", "",
     "## Study question and scope", "",
     "How do a majority baseline, ridge logistic regression, a decision tree, a probability random forest,",
     "and a linear SVM compare when predicting the historical UCI Adult income category >50K?",
@@ -95,6 +111,10 @@ write_run_report <- function(evaluation, bundle, audit, options, warnings, offic
     "Fold SD describes variation among dependent folds; it is not a confidence interval. CV scores used for",
     "selection are optimistic as performance estimates. They should not be presented as external validation.", "",
     "![Grouped training cross-validation](cv_comparison.png)", "",
+    "## Grid position of the selected settings", "",
+    "| Model | Selected setting | Grid position | Bracketed | Adjacent candidate | Mean fold margin | Folds higher, tied | Label |",
+    "|---|---|---|---|---|---:|---|---|", grid_rows, "", grid_text,
+    "[Grid position](grid_position.csv) records these values; [all candidates](cv_summary.csv) have fold means.", "",
     if (official) "## Reused-test results" else "## Custom-input evaluation results", "",
     "| Model | Accuracy | Balanced accuracy | Precision >50K | Recall >50K | ROC AUC | Average precision |",
     "|---|---:|---:|---:|---:|---:|---:|", metric_rows, "",
@@ -145,7 +165,8 @@ write_run_report <- function(evaluation, bundle, audit, options, warnings, offic
     "The defensible contribution is a reproducible R comparison with explicit data handling, grouped model selection,",
     "traceable outputs, and multidimensional evaluation. It is not a current-income estimator, a causal study,",
     "a deployment validation, or evidence of universal model superiority. A fresh external or temporal sample",
-    "would be required for a stronger generalization claim. Version 1 and historical slide scores are separate experiments.", "",
+    "would be required for a stronger generalization claim. Versions 1 and 2 and the historical slide scores are separate",
+    "experiments. Version 3 widens four tuning grids at once, so a difference from version 2 cannot be attributed to one change.", "",
     "## Diagnostics and provenance", "",
     if (length(warnings)) paste0("- ", unique(warnings)) else "No model warnings were recorded.",
     "Fitting failures abort the run. [Model diagnostics](diagnostics.csv), [input hashes](input_manifest.csv),",
