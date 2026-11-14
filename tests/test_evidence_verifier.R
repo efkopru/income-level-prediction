@@ -142,6 +142,98 @@ run_evidence_verifier_tests <- function(root) {
     path <- published(); unlink(file.path(path, "archive/v2-2026-10-08/R/plots.R"))
     rejects(verify_public_evidence(path, quiet = TRUE), "v2 source provenance: missing file: R/plots.R")
   })
+  v3_evidence <- "docs/evidence/v3-full-2026-11-14"
+  v3_snapshot <- "archive/v3-2026-11-14"
+  # Bring the public manifest up to date with edited files, so only the content checks can object.
+  remanifest <- function(path) {
+    directory <- file.path(path, v3_evidence)
+    manifest <- utils::read.csv(file.path(directory, "public_artifact_manifest.csv"), colClasses = "character")
+    files <- file.path(directory, manifest$file)
+    manifest$bytes <- file.info(files)$size
+    manifest$md5 <- unname(tools::md5sum(files))
+    utils::write.csv(manifest, file.path(directory, "public_artifact_manifest.csv"), row.names = FALSE)
+  }
+  republish <- function(path, file, change) {
+    directory <- file.path(path, v3_evidence)
+    table <- utils::read.csv(file.path(directory, file), colClasses = "character", check.names = FALSE,
+      na.strings = NULL)
+    utils::write.csv(change(table), file.path(directory, file), row.names = FALSE)
+    remanifest(path)
+  }
+  test("republished v3 run configuration for another protocol version is rejected", {
+    path <- published(); file <- file.path(path, v3_evidence, "run_config.txt")
+    config <- readLines(file)
+    writeLines(sub("^methodology_version: 3$", "methodology_version: 2", config), file); remanifest(path)
+    rejects(verify_public_evidence(path, quiet = TRUE),
+      "v3 run record: run configuration does not record methodology_version: 3")
+  })
+  test("republished v3 diagnostics with an SVM fit at its iteration limit are rejected", {
+    path <- published()
+    republish(path, "diagnostics.csv", function(x) { x$converged[which(x$model == "svm")[1L]] <- "FALSE"; x })
+    rejects(verify_public_evidence(path, quiet = TRUE),
+      "v3 run record: diagnostics record a fit that failed, did not converge, or reached a solver limit.")
+  })
+  test("republished v3 diagnostics without an SVM convergence record are rejected", {
+    path <- published()
+    republish(path, "diagnostics.csv", function(x) { x$converged[x$model == "svm"] <- ""; x })
+    rejects(verify_public_evidence(path, quiet = TRUE),
+      "v3 run record: diagnostics record a fit that failed, did not converge, or reached a solver limit.")
+  })
+  test("republished v3 diagnostics missing a fold fit are rejected", {
+    path <- published()
+    republish(path, "diagnostics.csv", function(x) x[-which(x$model == "tree")[1L], ])
+    rejects(verify_public_evidence(path, quiet = TRUE),
+      "v3 run record: diagnostics do not record one fit for every fold record and every selected setting.")
+  })
+  test("preserved v3 source mismatch is rejected", {
+    path <- published(); corrupt_same_size(file.path(path, v3_snapshot, "R/pipeline.R"))
+    rejects(verify_public_evidence(path, quiet = TRUE), "v3 source provenance: source snapshot md5 mismatch: R/pipeline.R")
+  })
+  test("missing v3 grid-position table is rejected", {
+    path <- published(); unlink(file.path(path, v3_evidence, "grid_position.csv"))
+    rejects(verify_public_evidence(path, quiet = TRUE), "v3 public artifacts: inventory mismatch; missing: grid_position.csv")
+  })
+  test("republished v3 grid-position label that disagrees with the fold scores is rejected", {
+    path <- published()
+    republish(path, "grid_position.csv", function(x) {
+      x$margin_label[1L] <- if (x$margin_label[1L] == "plateau") "separated" else "plateau"; x })
+    rejects(verify_public_evidence(path, quiet = TRUE),
+      "v3 grid position: grid position differs from recomputation from the fold scores: row 1, column margin_label")
+  })
+  test("republished v3 margin within rounding tolerance still verifies", {
+    path <- published()
+    republish(path, "grid_position.csv", function(x) {
+      x$margin[1L] <- sprintf("%.17g", as.numeric(x$margin[1L]) + 1e-15); x })
+    stopifnot(verify_public_evidence(path, quiet = TRUE))
+  })
+  test("republished v3 margin that differs from the fold scores is rejected", {
+    path <- published()
+    republish(path, "grid_position.csv", function(x) {
+      x$margin[1L] <- sprintf("%.17g", as.numeric(x$margin[1L]) + 1e-6); x })
+    rejects(verify_public_evidence(path, quiet = TRUE),
+      "v3 grid position: grid position differs from recomputation from the fold scores: row 1, column margin")
+  })
+  test("republished v3 selection that is not the best fold mean is rejected", {
+    path <- published()
+    republish(path, "cv_summary.csv", function(x) {
+      rows <- which(x$model == "tree"); x$selected[rows] <- ifelse(x$selected[rows] == "TRUE", "FALSE", "TRUE")
+      x$selected[rows[-1L]] <- "FALSE"; x })
+    rejects(verify_public_evidence(path, quiet = TRUE), "v3 grid position: fold means or selection differ from the fold scores: tree")
+  })
+  test("republished v3 fold record that does not reproduce version 2 is rejected", {
+    path <- published()
+    republish(path, "cv_metrics.csv", function(x) {
+      row <- which(x$model == "svm" & x$candidate == "cost=10" & x$fold == "2")
+      x$accuracy[row] <- "0.5"; x })
+    rejects(verify_public_evidence(path, quiet = TRUE),
+      "v3 reproduction of v2 folds: version 2 fold result not reproduced: svm cost=10 fold 2, accuracy")
+  })
+  test("republished v3 data-handling table that differs from version 2 is rejected", {
+    path <- published()
+    republish(path, "data_audit.csv", function(x) { x$value[1L] <- "0"; x })
+    rejects(verify_public_evidence(path, quiet = TRUE),
+      "v3 reproduction of v2 folds: table of the unchanged data handling differs from version 2: data_audit.csv")
+  })
   test("preserved v1 snapshot corruption is rejected", {
     path <- published(); corrupt_same_size(file.path(path, "archive/v1-2026-10-08/R/models.R"))
     rejects(verify_public_evidence(path, quiet = TRUE), "v1 SHA-256 snapshot: sha256 mismatch: R/models.R")

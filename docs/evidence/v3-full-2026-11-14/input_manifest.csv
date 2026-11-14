@@ -1,0 +1,3 @@
+"file","md5","bytes","matches_uci_reference","reference_url"
+"adult.data","5d7c39d7b8804f071cdd1f2a7c460872","3974305",TRUE,"https://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data"
+"adult.test","35238206dfdf7f1fe215bbb874adecdc","2003153",TRUE,"https://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.test"
