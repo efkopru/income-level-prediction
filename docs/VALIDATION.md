@@ -354,4 +354,6 @@ The five checks added to the main suite cover the declared grid and its version 
 
 Changing `scripts/verify_evidence.R` changes one hash recorded by the results-summary provenance, so `docs/figures/v2-results-summary` was regenerated from the unchanged version 2 aggregates. Its ten PNGs, eleven derived tables, catalog, gallery page, and file guide are byte-identical to the previous revision. Only `provenance.csv`, `artifact_manifest.csv`, and the embedded dates of `results_summary.pdf` changed. `docs/figures/v2-uncertainty-review` does not record that script and is unchanged.
 
-All suites ran locally under R 4.6.1 on Windows with `--vanilla`, `LC_ALL=C`, and `TZ=UTC`. Hosted CI had not run on this revision when this record was written.
+All suites ran locally under R 4.6.1 on Windows with `--vanilla`, `LC_ALL=C`, and `TZ=UTC`.
+
+Hosted checks for commit `ca08698` then passed in all four Windows and Linux jobs on [PR #4](https://github.com/efkopru/income-level-prediction/pull/4). Both platforms reported the same five check counts as the table above, with no plot check skipped, and completed the downloaded-data smoke run. On both, `scripts/verify_evidence.R` verified the version 3 evidence, recomputed all seven grid-position records, and found all 70 version 2 fold records reproduced, so the recomputation holds on Linux as well as on Windows. Hosted results for later revisions are recorded on that pull request.
