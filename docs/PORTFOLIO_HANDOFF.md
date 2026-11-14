@@ -1,8 +1,8 @@
-# Portfolio handoff: version 2
+# Portfolio handoff: versions 2 and 3
 
 The [existing portfolio page](https://www.ekopru.com/income-level-prediction-using-r/index.html) describes Esad Kopru's independent R learning project, links to [efkopru/ILPrediction](https://github.com/efkopru/ILPrediction), and contains 26 historical presentation images. Preserve that ownership and history. The original script and complete version 1 source/evidence snapshot remain under `archive/`.
 
-The revised project's public repository is [efkopru/income-level-prediction](https://github.com/efkopru/income-level-prediction). This document supplies the portfolio update copy and assets from the completed version 2 run. Independent output auditing and visual inspection of all six PNG/PDF pairs are complete. The live website remains unchanged.
+The revised project's public repository is [efkopru/income-level-prediction](https://github.com/efkopru/income-level-prediction). This document supplies the portfolio update copy and assets from the completed version 2 run and, beside it, from the version 3 run, which repeated version 2 with wider tuning grids. For version 2, independent output auditing and visual inspection of all six PNG/PDF pairs are complete. For version 3, the output audit is complete and all six PNGs were inspected; its PDFs were checked for page size and text but have not been rendered. The live website remains unchanged.
 
 ## Copy for the project page
 
@@ -16,7 +16,7 @@ An R classification study comparing ridge logistic regression, a decision tree, 
 
 ### My contribution
 
-I built the original R learning project to compare classifiers for an income-category task. I later revised it into a reproducible workflow with explicit data handling, grouped cross-validation, locked package versions, model diagnostics, and results that distinguish classification, ranking, probability quality, and subgroup errors.
+I built the original R learning project to compare classifiers for an income-category task. I later revised it into a reproducible workflow with explicit data handling, grouped cross-validation, locked package versions, model diagnostics, and results that distinguish classification, ranking, probability quality, and subgroup errors. In a third version, declared before its run, I widened every tuning grid to test whether the settings version 2 selected sat inside their grids.
 
 ### Methods
 
@@ -28,7 +28,11 @@ The comparison uses ridge logistic regression through `glmnet`, a decision tree 
 
 Conditional uncertainty uses 1,000 paired bootstrap resamples of raw 14-field predictor-signature clusters. All models share each resample. Intervals describe variability in this reused test sample conditional on the fitted models; they exclude model-training, selection, prior-test-exposure, and population-shift uncertainty. All six pairs among the trained models are reported.
 
+Version 3 repeats this design on the same records, folds, and seed with 25 candidates in place of 14, keeping every version 2 candidate. Its protocol was committed before the run, after version 2 results had been inspected, and declares in advance how each selection's position in its grid is reported. It evaluates the same test file a third time, so it adds no independent confirmation.
+
 ### Results
+
+#### Version 2
 
 The version 2 run completed on October 8, 2026. Grouped training cross-validation preferred the probability random forest, with mean balanced accuracy of 78.32% versus 78.23% for the decision tree. The selected forest used 500 trees and 28 candidate columns per split. Other selected settings were ridge `lambda = 0.0001`, tree `cp = 0.0005`, and linear-SVM `cost = 10`.
 
@@ -46,15 +50,42 @@ At its fixed threshold, the CV-preferred forest identified 2,397 of 3,840 positi
 
 The [results report](evidence/v2-full-2026-10-08/report.md), [exact metrics](evidence/v2-full-2026-10-08/metrics.csv), [selected settings](evidence/v2-full-2026-10-08/selected_parameters.csv), and [paired differences](evidence/v2-full-2026-10-08/paired_differences.csv) support these values. Version 1 and original-slide scores remain separate experiments.
 
+#### Version 3
+
+The version 3 run completed on November 14, 2026. It asks one question of version 2: does a wider grid move any selection? Three of the four selections are interior to their wider grids. The SVM selection is not.
+
+| Model | Version 2 selection | Version 3 selection | Position in the version 3 grid |
+| --- | --- | --- | --- |
+| Ridge logistic regression | `lambda = 0.0001` | `lambda = 0.00001` | Interior, on a plateau on both sides |
+| Decision tree | `cp = 0.0005` | `cp = 0.0005` | Interior, separated on both sides |
+| Probability random forest | 28 candidate columns | 28 candidate columns | Interior, separated on both sides |
+| Linear SVM | `cost = 10` | `cost = 30` | Grid edge: not bracketed, on a plateau |
+
+The tree and forest selections did not move. The version 2 tree setting proved to be the peak of the wider curve: mean fold balanced accuracy is 76.82% at `cp = 0.001`, 78.23% at `0.0005`, and 77.34% at `0.0001`. The ridge selection moved one step along a flat curve. The SVM selection moved to the new last candidate with a gain of 0.0001, and its grid could not be widened further, because the solver does not finish at `cost = 100`.
+
+| Model | Accuracy | Balanced accuracy | ROC AUC | Average precision |
+| --- | ---: | ---: | ---: | ---: |
+| Majority baseline | 76.38% | 50.00% | 0.5000 | 0.2362 |
+| Ridge logistic regression | 84.66% | 75.78% | 0.8980 | 0.7354 |
+| Decision tree | 86.42% | 77.92% | 0.8910 | 0.7615 |
+| Probability random forest | 86.04% | 77.88% | 0.9090 | 0.7933 |
+| Linear SVM | 84.81% | 75.95% | 0.8968 | 0.7357 |
+
+Training cross-validation again preferred the forest. The tree and forest are the same fitted settings as in version 2, so their test results and every statement about them above are unchanged. Ridge has 918 false positives where version 2 had 917, and the SVM has 900 where version 2 had 901; their true-positive and false-negative counts are unchanged.
+
+Version 3 widened four grids at once, so differences between the versions cannot be attributed to one change. A net difference of one false positive on a test file evaluated for the third time is not evidence that a wider grid helps or harms, and neither version is preferred because of its test scores. The [version 3 report](evidence/v3-full-2026-11-14/report.md), [exact metrics](evidence/v3-full-2026-11-14/metrics.csv), [selected settings](evidence/v3-full-2026-11-14/selected_parameters.csv), and [grid positions](evidence/v3-full-2026-11-14/grid_position.csv) support these values.
+
 ### Conclusion
 
 The study shows why an income-classification comparison needs more than accuracy. Training cross-validation selected the forest, which provided the strongest observed ranking and lowest aggregate probability errors, while the tree achieved slightly higher test classification scores. The conditional interval did not establish a clear balanced-accuracy difference between them. The forest still missed more than one third of positive records at the declared threshold.
+
+Version 3 selected the same tree and forest settings from wider grids, so these conclusions carry over unchanged. It adds that those two selections are bracketed, that the ridge selection sits on a plateau, and that the SVM selection remains at the edge of a grid this solver cannot extend.
 
 The contribution is a reproducible, inspectable comparison with explicit data handling, grouped selection, fixed-threshold error analysis, probability diagnostics, and conditional uncertainty. It does not establish a universal winner, a fairness certification, a current-income estimator, or a deployed system. The reused test sample limits independent confirmation.
 
 ### Limits
 
-This is an educational evaluation of historical census-derived records. The retained test data were reused after an earlier project iteration, and matching predictor profiles are not verified person identities. The study does not estimate current income, population prevalence, or causal effects. Sex and race remain predictors; descriptive subgroup comparisons do not establish fairness or causal discrimination. The income threshold is historical and is not adjusted to current dollars.
+This is an educational evaluation of historical census-derived records. The retained test data were reused after earlier project iterations and have now been evaluated three times, and matching predictor profiles are not verified person identities. The study does not estimate current income, population prevalence, or causal effects. Sex and race remain predictors; descriptive subgroup comparisons do not establish fairness or causal discrimination. The income threshold is historical and is not adjusted to current dollars.
 
 ### Tools
 
@@ -62,9 +93,11 @@ R 4.6.1; a 34-package `renv.lock`; `glmnet`, `ranger`, `rpart`, `e1071`, and `gg
 
 ## Evidence and reproduction
 
-The full [version 2 protocol](METHODOLOGY_V2.md) defines the experiment. The [validation record](VALIDATION.md) records the verification scope and limits. Numeric claims here refer to the completed version 2 aggregate export. Run diagnostics record 75 successful fits and no model warnings; all 18 offline checks passed.
+The full [version 2 protocol](METHODOLOGY_V2.md) defines the version 2 experiment. The [validation record](VALIDATION.md) records the verification scope and limits. Version 2 claims here refer to the completed version 2 aggregate export. Run diagnostics record 75 successful fits and no model warnings; all 18 offline checks passed.
 
 Independent auditing verified the final and out-of-fold prediction metrics, 70 candidate-fold evaluations across 14 declared candidates, saved-model scoring checks, and file integrity. The completed run has 40 local files; the public export has 35. Provenance verification includes nine source/protocol/lockfile hashes, two input hashes, 34 package versions, the preserved version 1 snapshot, and the original script. All six PNGs and six rendered PDFs were visually checked for complete, readable content.
+
+The [version 3 protocol](METHODOLOGY_V3.md) defines the second experiment, and version 3 claims here refer to its aggregate export in `evidence/v3-full-2026-11-14`. Its run diagnostics record 130 successful fits, including 21 SVM fits that finished within the solver's iteration limit, and no model warnings; all 27 offline checks passed. Independent auditing recomputed the final and selected out-of-fold metrics from the saved predictions and confirmed saved-model scoring. The completed run has 41 local files; the public export has 36, the additional file being `grid_position.csv`. `scripts/verify_evidence.R` recomputes every version 3 selection and grid position from the published fold scores and requires all 70 version 2 fold records to reappear unchanged. All six PNGs were visually checked. The six PDFs were checked for page size and text but have not been rendered.
 
 The maintained code now runs the [version 3 protocol](METHODOLOGY_V3.md), a separate experiment with wider tuning grids, so the commands below produce and export a version 3 run, not a version 2 reproduction. Commands from the repository root:
 
@@ -76,7 +109,7 @@ Rscript --vanilla IncomeLevelPrediction.R --download --output results/v3-reprodu
 Rscript --vanilla scripts/export_evidence.R results/v3-reproduction results/v3-reproduction-public
 ```
 
-Use new run and export directories when rerunning. Both example destinations are local review copies under ignored `results/`; neither overwrites committed evidence. Current maintenance code records deviations from reference settings in `methodology.md`. The exact version 2 code is preserved under `archive/v2-2026-10-08`, with the complete original checkout available at commit `2ab72d12cf5290df1841da70b524740a70718c17`. The exporter requires a completed version 3 full run, official input checksums, successful model diagnostics, and artifact hashes and byte sizes that match the manifest. It copies a fixed allowlist and verifies the copies. Raw data, record-level and out-of-fold predictions, fold identifiers, model objects, session details, and local dependencies remain outside the public export.
+Use new run and export directories when rerunning. Both example destinations are local review copies under ignored `results/`; neither overwrites committed evidence. Current maintenance code records deviations from reference settings in `methodology.md`. The exact version 2 code is preserved under `archive/v2-2026-10-08`, with the complete original checkout available at commit `2ab72d12cf5290df1841da70b524740a70718c17`. The exact version 3 code is preserved under `archive/v3-2026-11-14`. The exporter requires a completed version 3 full run, official input checksums, successful model diagnostics, and artifact hashes and byte sizes that match the manifest. It copies a fixed allowlist and verifies the copies. Raw data, record-level and out-of-fold predictions, fold identifiers, model objects, session details, and local dependencies remain outside the public export.
 
 Run provenance covers the entry point, six R modules, protocol, and lockfile, plus the two data inputs. Changes during execution prevent finalization. File integrity checks do not replace scientific review, figure inspection, or review of publication contents.
 
@@ -97,23 +130,39 @@ Copy assets from `docs/evidence/v2-full-2026-10-08/` into the portfolio assets d
 
 Two [supplemental uncertainty figures](figures/v2-uncertainty-review/README.md) redraw the original aggregate tables without changing estimates or intervals. The updated metric comparison exposes narrow intervals; the paired-difference figure shows all six trained-model pairs across five metrics, with zero as the reference. Positive values mean model A minus model B. Use these in an explicitly labeled supplement with the same 2400 x 1500 dimensions and gallery behavior below. Preserve the original six-figure evidence gallery and identify the supplement as a presentation update, not a new model run.
 
+## Version 3 gallery assets
+
+Version 3 exported the same six figures, with the same dimensions and captions, to `docs/evidence/v3-full-2026-11-14/`. Its subgroup recall PNG is byte-identical to version 2's. The other five differ: the ridge and SVM values moved slightly, and the model comparison uses the redesigned layout introduced after version 2 was published.
+
+| Figure | PNG / PDF |
+| --- | --- |
+| Model comparison | [PNG](evidence/v3-full-2026-11-14/model_comparison.png) / [PDF](evidence/v3-full-2026-11-14/model_comparison.pdf) |
+| ROC and precision-recall curves | [PNG](evidence/v3-full-2026-11-14/roc_pr_curves.png) / [PDF](evidence/v3-full-2026-11-14/roc_pr_curves.pdf) |
+| Confusion matrices | [PNG](evidence/v3-full-2026-11-14/confusion_matrices.png) / [PDF](evidence/v3-full-2026-11-14/confusion_matrices.pdf) |
+| Probability calibration | [PNG](evidence/v3-full-2026-11-14/calibration.png) / [PDF](evidence/v3-full-2026-11-14/calibration.pdf) |
+| Grouped cross-validation | [PNG](evidence/v3-full-2026-11-14/cv_comparison.png) / [PDF](evidence/v3-full-2026-11-14/cv_comparison.pdf) |
+| Subgroup recall | [PNG](evidence/v3-full-2026-11-14/subgroup_recall.png) / [PDF](evidence/v3-full-2026-11-14/subgroup_recall.pdf) |
+
+The captions and alt text in the version 2 table apply to the matching version 3 figure. If the page shows version 3 figures, give them their own labeled gallery; never mix figures from the two runs in one gallery. The page can also keep the version 2 gallery alone and link to the version 3 figures. Choose by layout, not by which run has the better test scores. The version 3 PDFs have not been rendered for inspection, so render and inspect them before offering them for download.
+
 ## Layout and interaction specifications
 
-Use a separate **Version 2 analysis** gallery. Give all six figures equal card widths, equal preview dimensions, and equal initial zoom. Place each PNG in a `16 / 10` container with `object-fit: contain`; do not crop axes, titles, legends, intervals, or captions. Use intrinsic image attributes `width="2400"` and `height="1500"`, responsive width, and automatic image height.
+Use a separate **Version 2 analysis** gallery, and a separate **Version 3 analysis** gallery if version 3 figures are shown. Give all six figures equal card widths, equal preview dimensions, and equal initial zoom. Place each PNG in a `16 / 10` container with `object-fit: contain`; do not crop axes, titles, legends, intervals, or captions. Use intrinsic image attributes `width="2400"` and `height="1500"`, responsive width, and automatic image height.
 
 Use two columns above 800 CSS pixels and one column at or below 800 pixels. Check layouts at 360, 768, and 1280 CSS pixels. Preview dimensions and internal chart scale must remain consistent. Dense labels may require the full-size view; shrinking one figure differently to fit its preview is not acceptable.
 
 Each image opens the full-resolution PNG in a keyboard-accessible viewer. Provide meaningful alt text, a visible caption, a named close button, Escape-to-close behavior, and focus restoration to the originating link. Keep visible keyboard focus and support zoom and fit-to-screen controls. Verify titles, axes, legends, interval labels, and subgroup denominators at full size.
 
-Retain the 26 existing images in a separate **Original historical presentation** gallery. Preserve slide order, historical captions, the existing full-size viewer, and their 1440 x 810 preview ratio without cropping. Their historical accuracy figures are not version 2 results.
+Retain the 26 existing images in a separate **Original historical presentation** gallery. Preserve slide order, historical captions, the existing full-size viewer, and their 1440 x 810 preview ratio without cropping. Their historical accuracy figures are not version 2 or version 3 results.
 
 ## Publication checks
 
-- Match every result claim to the completed version 2 report, metric tables, selected settings, and uncertainty tables.
+- Match every version 2 claim to the completed version 2 report, metric tables, selected settings, and uncertainty tables, and every version 3 claim to the version 3 report, metric tables, selected settings, grid positions, and uncertainty tables.
+- State where each version 3 selection sits in its grid as recorded: ridge, tree, and forest interior; SVM at a grid edge and not bracketed. Do not describe the ridge plateau or the SVM grid edge as an optimum.
 - Keep the reused-test disclosure visible beside the results. Keep unweighted sampling, conditional intervals, historical categories, and fixed-threshold errors in the technical details.
-- Inspect all six PNGs and corresponding PDFs for missing labels, clipping, overlap, and readable chart text.
+- Inspect all six PNGs and corresponding PDFs for missing labels, clipping, overlap, and readable chart text. The version 3 PDFs still need this inspection.
 - Verify exported hashes and byte sizes, then inspect the publication tree for raw records, private paths, model files, secrets, and unsupported claims.
-- Keep the original script and version 1 snapshot unchanged. Do not infer a version 2 improvement caused by one modification when several parts of the experiment changed.
+- Keep the original script and version 1 snapshot unchanged. Do not infer a version 2 improvement caused by one modification when several parts of the experiment changed. Do not present version 3 as an improvement on version 2, or attribute a difference between them to one grid: four grids changed at once and the test file was reused.
 - Preserve UCI attribution. Select a code license explicitly if open-source reuse is intended.
 - When publication is authorized, verify the remote target, visibility, final uploaded contents, live source link, and matching gallery assets. A local successful run or configured CI workflow does not establish a remote publication or CI pass.
 
