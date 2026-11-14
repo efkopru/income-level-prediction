@@ -433,6 +433,10 @@ run_income_tests <- function() {
       identical(tail(text,length(readLines(file.path(root,income_protocol())))),
         readLines(file.path(root,income_protocol()))),
       any(grepl("historical version 3",text,fixed=TRUE)))
+    # A version 3 report must name both earlier evaluations of the official test file.
+    history <- paste(income_test_history(TRUE),collapse=" ")
+    stopifnot(grepl("examined in versions 1 and 2",history,fixed=TRUE),grepl("third evaluation",history,fixed=TRUE),
+      grepl("**reused benchmark test**",history,fixed=TRUE),!any(grepl("version",income_test_history(FALSE))))
     options <- parse_options(c("--output",fixture_dir(),"--seed","7","--trees","12",
       "--folds","2","--bootstrap","20"),root)
     write_run_methodology(options,FALSE,120L,40L)

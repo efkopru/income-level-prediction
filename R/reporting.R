@@ -29,6 +29,13 @@ write_run_methodology <- function(options, official, n_training, n_test) {
   writeLines(text, file.path(options$output, "methodology.md"))
 }
 
+# What a report may say about earlier use of its evaluation sample. Versions 1 and 2
+# both published results on the official test file before version 3 scored it.
+income_test_history <- function(official) if (official)
+  c("The official benchmark test was examined in versions 1 and 2, so this is its third evaluation.",
+    "It is a **reused benchmark test**, not a fresh independent validation sample.") else
+  "These are caller-supplied files. Their independence and history of prior evaluation are not established."
+
 write_run_report <- function(evaluation, bundle, audit, options, warnings, official) {
   labels <- c(majority = "Majority baseline", logistic = "Ridge logistic regression",
     tree = "Decision tree", forest = "Probability random forest", svm = "Linear SVM")
@@ -80,9 +87,7 @@ write_run_report <- function(evaluation, bundle, audit, options, warnings, offic
     "How do a majority baseline, ridge logistic regression, a decision tree, a probability random forest,",
     "and a linear SVM compare when predicting the historical UCI Adult income category >50K?",
     "This evaluates classification, ranking, and probability quality as separate properties.", "",
-    if (official) c("The official benchmark test was examined in version 1. It is a **reused benchmark test**,",
-      "not a fresh independent validation sample.") else
-      "These are caller-supplied files. Their independence and history of prior evaluation are not established.",
+    income_test_history(official),
     "The pipeline selects model settings from training folds only; it does not select settings or thresholds from test scores.",
     "Caller-supplied overrides are separate configurations, not a new preregistered experiment.", "",
     "## Data and methods", "",
