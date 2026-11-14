@@ -79,6 +79,8 @@ The full run completed on October 8, 2026 with 32,537 training and 16,255 reused
 
 Training cross-validation preferred the probability random forest: mean balanced accuracy was 78.32%, compared with 78.23% for the tree. Selected settings were ridge `lambda = 0.0001`, tree `cp = 0.0005`, forest `mtry = floor(p / 3)` (28 columns in the final fit), and SVM `cost = 10`.
 
+Each selected setting is the last candidate in its declared grid, so no grid brackets the value it chose. This matters most for the tree: its mean fold balanced accuracy rose from 76.82% to 78.23% between its final two `cp` values, while ridge and SVM scores had already flattened. Widening a grid would be a new experiment under a new protocol, not a correction to this one.
+
 | Model | Accuracy | Balanced accuracy | ROC AUC | Average precision |
 | --- | ---: | ---: | ---: | ---: |
 | Majority baseline | 76.38% | 50.00% | 0.5000 | 0.2362 |
@@ -122,9 +124,11 @@ Six `ggplot2` figures are exported as **2400 x 1500 PNGs** and matching **12 x 7
 | `cv_comparison` | Training-fold variability for selected settings |
 | `subgroup_recall` | Recall by recorded sex and race with denominators and intervals |
 
-The workflow snapshots nine source, protocol, and lockfile hashes plus input hashes before fitting, then verifies them again before finalizing. Changed files prevent successful finalization. Run and public manifests record output hashes and byte sizes.
+PNGs are drawn on base R's `grDevices::png` device, named explicitly in `R/plots.R`. Left to choose, `ggsave()` switches to `ragg` whenever that package is installed, including outside the locked project library, which changes text metrics and every PNG byte. PNG bytes still depend on the operating system that renders them; the committed PNGs were rendered on Windows.
 
-The [preserved version 2 source](archive/v2-2026-10-08/README.md) matches the published run's nine source hashes. Current maintenance code has different hashes. `scripts/verify_evidence.R` checks committed evidence and archived provenance on both CI platforms without downloading records or fitting models. For the complete original checkout, use publication commit `2ab72d12cf5290df1841da70b524740a70718c17` in a separate checkout.
+The workflow snapshots nine source, protocol, and lockfile hashes plus input hashes before fitting, then verifies them again before finalizing. Changed files prevent successful finalization. Run and public manifests record output hashes and byte sizes. New runs also record the R version and platform in `run_config.txt`. The published run predates those two fields; its R 4.6.1 runtime is recorded in the [validation record](docs/VALIDATION.md).
+
+The [preserved version 2 source](archive/v2-2026-10-08/README.md) matches the published run's nine source hashes. Current maintenance code has different hashes. A full rerun of the maintained code on November 13, 2026 reproduced every published aggregate table byte for byte, apart from wall-clock fit times in `cv_metrics.csv`; the [validation record](docs/VALIDATION.md) lists the files compared. `scripts/verify_evidence.R` checks committed evidence and archived provenance on both CI platforms without downloading records or fitting models. For the complete original checkout, use publication commit `2ab72d12cf5290df1841da70b524740a70718c17` in a separate checkout.
 
 The [supplemental uncertainty figures](docs/figures/v2-uncertainty-review/README.md) redraw the same saved estimates and intervals with clearer markers and all paired comparisons. They do not replace the original figures or report a new experiment.
 

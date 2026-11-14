@@ -1,6 +1,7 @@
 #!/usr/bin/env Rscript
 # Restore recorded package versions without activating an automatic .Rprofile.
-invocation <- grep("^--file=", commandArgs(FALSE), value = TRUE)
+# R's Unix front end passes each space in the script path as "~+~".
+invocation <- gsub("~+~", " ", grep("^--file=", commandArgs(FALSE), value = TRUE), fixed = TRUE)
 root <- if (length(invocation)) dirname(dirname(normalizePath(sub("^--file=", "", invocation[[1]])))) else getwd()
 library_path <- file.path(root, ".R-library")
 dir.create(library_path, showWarnings = FALSE)

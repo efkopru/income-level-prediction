@@ -166,6 +166,7 @@ render_evidence_figures <- function(source, destination, root) {
     paste0("source_directory: ", repo_path(source)),
     paste0("R_version: ", R.version.string), paste0("ggplot2_version: ", utils::packageVersion("ggplot2")),
     paste0("locale: ", Sys.getlocale()), "PNG_dimensions: 2400 x 1500 pixels",
+    paste0("PNG_device: ", plotting$income_png_device_label()),
     "PDF_dimensions: 12 x 7.5 inches", "plot_source_hash_algorithm: MD5",
     "source_validation: all four aggregate CSV hashes and sizes checked against public_artifact_manifest.csv before CSV parsing"),
     file.path(destination, "render_context.txt"))
@@ -199,7 +200,8 @@ if (sys.nframe() == 0L) {
   args <- commandArgs(trailingOnly = TRUE)
   if (length(args) != 2L)
     stop("Usage: Rscript --vanilla scripts/render_evidence_figures.R PUBLISHED_EVIDENCE_DIRECTORY NEW_FIGURE_DIRECTORY")
-  invocation <- grep("^--file=", commandArgs(FALSE), value = TRUE)
+  # R's Unix front end passes each space in the script path as "~+~".
+  invocation <- gsub("~+~", " ", grep("^--file=", commandArgs(FALSE), value = TRUE), fixed = TRUE)
   root <- dirname(dirname(normalizePath(sub("^--file=", "", invocation[1L]))))
   render_evidence_figures(args[[1L]], args[[2L]], root)
 }

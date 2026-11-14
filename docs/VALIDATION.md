@@ -146,3 +146,42 @@ Rscript --vanilla scripts/verify_results_summary.R
 ```
 
 The Windows/Linux workflow runs all three commands and creates a new summary from the published aggregates in an ignored CI directory. Hosted check results for each revision are recorded on [PR #2](https://github.com/efkopru/income-level-prediction/pull/2).
+
+## Maintenance review: November 13, 2026
+
+This revision changes figure rendering, script startup, and recorded run metadata. Data handling, model fitting, selection, metrics, and uncertainty calculations are unchanged. Every file under `docs/evidence` and `archive` remains byte-identical.
+
+### Published numbers reproduce
+
+No full refit had been run since publication. A full run of the previous revision (commit `44a5f70`) and a full run of this revision's pipeline modules were each compared with the published export, using the checksum-verified inputs, default settings, and R 4.6.1 on Windows. Both completed with no model warnings. In both, fifteen aggregate tables and the warning record matched the published files byte for byte: `metrics`, `metric_intervals`, `paired_differences`, `bootstrap_design`, `calibration`, `subgroup_metrics`, `profile_overlap`, `profile_sensitivity`, `cv_summary`, `selected_parameters`, `diagnostics`, `data_audit`, `unseen_categories`, `input_manifest`, and `package_versions`. `cv_metrics.csv` matched in all 70 rows and every column except `elapsed_seconds`, which records wall-clock fit time. The report, recorded methodology, run configuration, and source manifest differ because maintenance changed their wording and the source hashes.
+
+### Figure rendering no longer depends on an unlocked package
+
+`ggplot2::ggsave()` selects its PNG device at run time and uses `ragg` whenever that package is installed. `ragg` is not in `renv.lock`, yet a copy in the user library stays on the library path under `--vanilla`. With `ragg` 1.5.2 installed there, the previous revision rendered every PNG with different bytes, larger files, and shifted text. All ten summary PNGs differed from the committed files, and so did the five pipeline PNGs whose plotting code is unchanged since publication. Hiding the user library restored exact matches for all ten summary PNGs.
+
+`R/plots.R` now names `grDevices::png` in one helper shared by the pipeline and both supplement generators. With `ragg` still installed, the ten summary PNGs and both uncertainty PNGs matched their committed files byte for byte before any plot was edited. The full run of this revision reproduced five of the six published pipeline PNGs exactly; the sixth, `model_comparison`, was deliberately redesigned in the earlier maintenance revision. These are same-platform identities: PNG bytes remain specific to the operating system that renders them. The earlier byte-for-byte statement in this record held because `ragg` was not on the library path for that render.
+
+### Regenerated supplements
+
+Both supplement provenance records hash their rendering sources, so both folders were regenerated from the unchanged published aggregates. In `v2-uncertainty-review`, both PNGs are unchanged and both PDFs differ only in their embedded creation and modification dates. In `v2-results-summary`, nine PNGs, all eleven derived tables, the figure catalog, the gallery page, and the file guide are unchanged; `01_performance_scorecard.png` and the chart book changed. Provenance, render-context, and manifest files changed in both folders, and each render context now names the PNG device.
+
+The scorecard change is cosmetic. Its legend title overlapped the first colorbar tick label, and grid-line stubs showed between tiles. Cell values, colors, and text are unchanged. The revised PNG and the first chart-book page were visually inspected.
+
+### Script startup and run metadata
+
+R's Unix front end reports a script path with each space written as `~+~`. On Linux and macOS, each entry point would therefore resolve a nonexistent project root when the repository path contains a space. All eleven self-locating scripts now decode that form. This failure was not observed directly: the Windows front end passes spaces unchanged, and a run from a spaced path succeeded on the machine used here both before and after the change. Two new subprocess checks run the pipeline entry point and the evidence verifier from directories containing spaces; the Linux CI job is where they first exercise the Unix form.
+
+New runs record `r_version` and `platform` in `run_config.txt`. Exported evidence previously named no base R version, because `package_versions.csv` covers lockfile packages only and `session_info.txt` stays local.
+
+### Checks
+
+| Check | Result |
+| --- | --- |
+| Main regression suite | 22 checks passed |
+| Evidence verifier suite | 37 checks passed |
+| Supplemental plot suite | 9 checks passed, none skipped |
+| Results summary suite | 24 checks passed |
+| Results summary verifier suite | 9 checks passed |
+| `scripts/verify_evidence.R` and `scripts/verify_results_summary.R` | Passed after regeneration |
+
+All suites ran locally under R 4.6.1 on Windows with `--vanilla`, `LC_ALL=C`, and `TZ=UTC`. The new device check renders one plot through the shared helper and directly on `grDevices::png` and requires identical bytes; against the previous `ggsave()` call it fails on a machine with `ragg` installed. Hosted CI had not run on this revision when this record was written.

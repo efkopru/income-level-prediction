@@ -271,7 +271,11 @@ run_income_pipeline <- function(options) {
     paste("trees:", options$trees), paste("folds:", options$folds), paste("bootstrap_replicates:", options$bootstrap),
     paste("reference_settings:", if (any(income_run_settings(options)$changed)) "modified" else "matching"),
     "selection_metric: mean_fold_balanced_accuracy", "positive_class: >50K", "thresholds: probability>0.5,margin>0",
-    "rng: Mersenne-Twister,Inversion,Rejection", "collation: C", paste("test_status:", test_status),
+    "rng: Mersenne-Twister,Inversion,Rejection", "collation: C",
+    # The exported aggregate evidence otherwise names no base R version: package_versions.csv
+    # covers the lockfile packages only, and session_info.txt stays local.
+    paste("r_version:", as.character(getRversion())), paste("platform:", R.version$platform),
+    paste("test_status:", test_status),
     "numeric_transform: log1p_capitalgain_capitalloss_then_training_imputation_scaling",
     "excluded_features: education,fnlwgt", "sample_weights: none",
     "bootstrap_unit: raw_14_predictor_signature", "bootstrap_scope: conditional_on_fitted_models"),

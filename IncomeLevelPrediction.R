@@ -2,7 +2,8 @@
 # Author: Esad Kopru
 # Version 2. Historical sources and version 1 remain under archive/.
 main <- function(args = commandArgs(trailingOnly = TRUE)) {
-  invocation <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
+  # R's Unix front end passes each space in the script path as "~+~".
+  invocation <- gsub("~+~", " ", grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE), fixed = TRUE)
   root <- if (length(invocation)) dirname(normalizePath(sub("^--file=", "", invocation[[1]]))) else getwd()
   if (dir.exists(file.path(root, ".R-library"))) .libPaths(c(file.path(root, ".R-library"), .libPaths()))
   modules <- c("data.R", "models.R", "evaluation.R", "plots.R", "reporting.R", "pipeline.R")

@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # Standalone offline verifier checks. Mutations are confined to temporary fixtures.
-invocation <- grep("^--file=", commandArgs(FALSE), value = TRUE)
+invocation <- gsub("~+~", " ", grep("^--file=", commandArgs(FALSE), value = TRUE), fixed = TRUE)
 root <- if (length(invocation)) dirname(dirname(normalizePath(sub("^--file=", "", invocation[1L])))) else getwd()
 if (dir.exists(file.path(root, ".R-library"))) .libPaths(c(file.path(root, ".R-library"), .libPaths()))
 source(file.path(root, "scripts/verify_evidence.R"))
@@ -47,15 +47,14 @@ run_evidence_verifier_tests <- function(root) {
     utils::write.csv(change(manifest), file.path(path, "manifest.csv"), row.names = FALSE)
   }
   check <- function(path, ...) verify_evidence_manifest(path, "manifest.csv", label = "fixture", ...)
-  published <- function() {
-    path <- tempfile("published-", tmpdir = fixtures)
-    stopifnot(dir.create(path), dir.create(file.path(path, "docs")))
+  published <- function(path = tempfile("published-", tmpdir = fixtures)) {
+    stopifnot(dir.create(path, recursive = TRUE), dir.create(file.path(path, "docs")))
     stopifnot(file.copy(file.path(root, "archive"), path, recursive = TRUE))
     stopifnot(file.copy(file.path(root, "docs/evidence"), file.path(path, "docs"), recursive = TRUE))
     path
   }
-  supplemental <- function() {
-    path <- published()
+  supplemental <- function(...) {
+    path <- published(...)
     stopifnot(file.copy(file.path(root, "docs/figures"), file.path(path, "docs"), recursive = TRUE),
       dir.create(file.path(path, "scripts")), dir.create(file.path(path, "R")),
       file.copy(file.path(root, "scripts/render_evidence_figures.R"), file.path(path, "scripts")),
@@ -186,6 +185,22 @@ run_evidence_verifier_tests <- function(root) {
   test("missing supplemental manifest is rejected", {
     path <- supplemental(); unlink(file.path(path, "docs/figures/v2-uncertainty-review/figure_manifest.csv"))
     rejects(verify_supplemental_evidence(path, quiet = TRUE), "supplemental figures: missing file: figure_manifest.csv")
+  })
+  test("command-line verifier locates a repository whose path contains spaces", {
+    # R's Unix front end reports such a script path with every space written as "~+~".
+    path <- supplemental(file.path(tempfile("spaced-", tmpdir = fixtures), "repository with spaces"))
+    stopifnot(file.copy(file.path(root, "scripts/verify_evidence.R"), file.path(path, "scripts")))
+    executable <- file.path(R.home("bin"), if (.Platform$OS.type == "windows") "Rscript.exe" else "Rscript")
+    # The copy has no project library; hand the child this session's library path.
+    previous <- Sys.getenv("R_LIBS", unset = NA)
+    Sys.setenv(R_LIBS = paste(.libPaths(), collapse = .Platform$path.sep))
+    output <- tryCatch(suppressWarnings(system2(executable,
+      c("--vanilla", shQuote(file.path(path, "scripts/verify_evidence.R"))), stdout = TRUE, stderr = TRUE)),
+      finally = if (is.na(previous)) Sys.unsetenv("R_LIBS") else Sys.setenv(R_LIBS = previous))
+    status <- attr(output, "status")
+    if (!is.null(status) && status != 0L) stop(paste(output, collapse = "\n"))
+    stopifnot(any(grepl("Read-only verification complete", output, fixed = TRUE)),
+      any(grepl("Verified 7 supplemental output hashes", output, fixed = TRUE)))
   })
   test("repository source snapshots and public evidence remain byte-identical", {
     stopifnot(identical(before, tools::md5sum(checked_files)))

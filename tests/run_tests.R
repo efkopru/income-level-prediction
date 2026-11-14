@@ -1,5 +1,5 @@
 # Offline methodology-v2 regression checks. Run: Rscript --vanilla tests/run_tests.R
-invocation <- grep("^--file=", commandArgs(FALSE), value = TRUE)
+invocation <- gsub("~+~", " ", grep("^--file=", commandArgs(FALSE), value = TRUE), fixed = TRUE)
 root <- if (length(invocation)) dirname(dirname(normalizePath(sub("^--file=", "", invocation[1L])))) else getwd()
 if (dir.exists(file.path(root, ".R-library"))) .libPaths(c(file.path(root, ".R-library"), .libPaths()))
 module_files <- c("data.R", "models.R", "evaluation.R", "plots.R", "reporting.R", "pipeline.R")
@@ -398,6 +398,8 @@ run_income_tests <- function() {
     }
     stopifnot("status: complete" %in% readLines(file.path(output,"run_config.txt")))
     stopifnot("reference_settings: modified" %in% readLines(file.path(output,"run_config.txt")))
+    stopifnot(paste("r_version:",as.character(getRversion())) %in% readLines(file.path(output,"run_config.txt")),
+      paste("platform:",R.version$platform) %in% readLines(file.path(output,"run_config.txt")))
     methodology <- readLines(file.path(output,"methodology.md"))
     stopifnot("| trees | 500 | 30 | Changed |" %in% methodology,
       "| folds | 5 | 3 | Changed |" %in% methodology,
@@ -408,6 +410,36 @@ run_income_tests <- function() {
       "custom_test" %in% read.csv(file.path(output,"split_assignments.csv"))$partition,
       !any(grepl("On the reused benchmark|evaluating the reused test",readLines(file.path(output,"report.md")))))
     expect_error(export_evidence(output,fixture_dir()),"full runs")
+  })
+  check("PNG export equals the base R device output, whatever other devices are installed", {
+    # ggsave() prefers ragg when it is installed, even outside the locked library.
+    # Rendering the same plot directly on grDevices::png must give identical bytes.
+    plot <- ggplot2::ggplot(data.frame(x=1:3,y=c(2,1,3)),ggplot2::aes(x,y)) + ggplot2::geom_point() +
+      ggplot2::labs(title="Device check",caption="Text metrics differ between devices") + income_plot_theme()
+    directory <- fixture_dir(); saved <- file.path(directory,"saved.png"); direct <- file.path(directory,"direct.png")
+    save_income_png(plot,saved)
+    grDevices::png(direct,width=12,height=7.5,units="in",res=200,bg="#FAFBFD")
+    tryCatch(print(plot),finally=grDevices::dev.off())
+    bytes <- function(path) readBin(path,"raw",n=file.info(path)$size)
+    stopifnot(file.info(saved)$size>1000,identical(bytes(saved),bytes(direct)))
+    header <- bytes(saved)[1:24]
+    equal(readBin(header[17:20],integer(),n=1,size=4,endian="big"),2400L)
+    equal(readBin(header[21:24],integer(),n=1,size=4,endian="big"),1500L)
+    paths <- save_income_figure(plot,directory,"pair")
+    stopifnot(identical(bytes(paths[["png"]]),bytes(direct)),identical(readChar(paths[["pdf"]],4L),"%PDF"))
+  })
+  check("Entry point finds its project from a directory whose path contains spaces", {
+    # R's Unix front end reports such a script path with every space written as "~+~".
+    project <- file.path(fixture_dir(),"project with spaces")
+    files <- c("IncomeLevelPrediction.R",file.path("R",module_files),"renv.lock","docs/METHODOLOGY_V2.md")
+    stopifnot(dir.create(project),dir.create(file.path(project,"R")),dir.create(file.path(project,"docs")),
+      all(file.copy(file.path(root,files),file.path(project,files))))
+    executable <- file.path(R.home("bin"),if(.Platform$OS.type=="windows") "Rscript.exe" else "Rscript")
+    output <- suppressWarnings(system2(executable,c("--vanilla",shQuote(file.path(project,"IncomeLevelPrediction.R")),
+      "--help"),stdout=TRUE,stderr=TRUE))
+    status <- attr(output,"status")
+    if(!is.null(status) && status != 0L) stop(paste(output,collapse="\n"))
+    stopifnot(any(startsWith(output,"Usage: Rscript --vanilla IncomeLevelPrediction.R")))
   })
   check("Exporter copies only aggregate evidence and checks public hashes and byte sizes", {
     source <- export_fixture(); destination <- fixture_dir()
