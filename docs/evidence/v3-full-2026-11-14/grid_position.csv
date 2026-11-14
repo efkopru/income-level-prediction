@@ -1,0 +1,8 @@
+"model","selected_candidate","selected_index","n_candidates","position","bracketed","neighbour_side","neighbour_candidate","nfolds","margin","folds_selection_higher","folds_tied","margin_label"
+"logistic","lambda=1e-05",5,6,"interior",TRUE,"preceding","lambda=1e-04",5,"0.00010731220401414277",3,1,"plateau"
+"logistic","lambda=1e-05",5,6,"interior",TRUE,"following","lambda=1e-06",5,"0",0,5,"plateau"
+"tree","cp=5e-04",4,9,"interior",TRUE,"preceding","cp=0.001",5,"0.014091975147436852",5,0,"separated"
+"tree","cp=5e-04",4,9,"interior",TRUE,"following","cp=1e-04",5,"0.0088483131565108009",4,0,"separated"
+"forest","mtry=third",2,5,"interior",TRUE,"preceding","mtry=sqrt",5,"0.0038707199731597974",4,0,"separated"
+"forest","mtry=third",2,5,"interior",TRUE,"following","mtry=half",5,"0.0034222712929880663",5,0,"separated"
+"svm","cost=30",4,4,"grid_edge",FALSE,"preceding","cost=10",5,"0.00012754692182241899",3,2,"plateau"

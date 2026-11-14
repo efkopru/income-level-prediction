@@ -1,0 +1,33 @@
+#!/usr/bin/env Rscript
+# Author: Esad Kopru
+# Version 3. The original script and the published-run source snapshots remain under archive/.
+main <- function(args = commandArgs(trailingOnly = TRUE)) {
+  # R's Unix front end passes each space in the script path as "~+~".
+  invocation <- gsub("~+~", " ", grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE), fixed = TRUE)
+  root <- if (length(invocation)) dirname(normalizePath(sub("^--file=", "", invocation[[1]]))) else getwd()
+  if (dir.exists(file.path(root, ".R-library"))) .libPaths(c(file.path(root, ".R-library"), .libPaths()))
+  modules <- c("data.R", "models.R", "evaluation.R", "plots.R", "reporting.R", "pipeline.R")
+  paths <- file.path(root, c("IncomeLevelPrediction.R", file.path("R", modules),
+    "renv.lock", "docs/METHODOLOGY_V3.md"))
+  hashes <- unname(tools::md5sum(paths))
+  environment <- new.env(parent = globalenv())
+  for (file in modules) sys.source(file.path(root, "R", file), envir = environment)
+  options <- environment$parse_options(args, root)
+  options$source_hash <- hashes
+  if (options$help) {
+    cat(paste(
+      "Usage: Rscript --vanilla IncomeLevelPrediction.R [options]",
+      "  --download       Fetch checksum-verified public UCI inputs if absent",
+      "  --data-dir PATH  Input folder (default: project data/raw)",
+      "  --output PATH    New output folder; existing non-empty folders refused",
+      "  --seed INTEGER   Fixed RNG seed, default 12345",
+      "  --trees INTEGER  Probability-forest trees, default 500",
+      "  --folds INTEGER  Grouped training CV folds, default 5",
+      "  --bootstrap N    Paired cluster-bootstrap replicates, default 1000",
+      "  --smoke          Small execution check, not reportable study results",
+      "  --help           Print usage", sep = "\n"), "\n")
+    return(invisible(NULL))
+  }
+  environment$run_income_pipeline(options)
+}
+if (sys.nframe() == 0L) main()

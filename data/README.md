@@ -9,11 +9,11 @@ This project uses the official training and test files from the [UCI Adult datas
 
 The test file includes an initial comment line and labels with trailing periods. The parser normalizes these formats and treats `?` as a missing-value marker.
 
-The current workflow follows the [version 2 protocol](../docs/METHODOLOGY_V2.md). Use R 4.6.1 and restore the 34 package versions recorded in `renv.lock`, then run from the repository root:
+The current workflow follows the [version 3 protocol](../docs/METHODOLOGY_V3.md). It keeps the version 2 data handling described below and widens the tuning grids. Use R 4.6.1 and restore the 34 package versions recorded in `renv.lock`, then run from the repository root:
 
 ```sh
 Rscript --vanilla scripts/install_dependencies.R
-Rscript --vanilla IncomeLevelPrediction.R --download --output results/v2-full
+Rscript --vanilla IncomeLevelPrediction.R --download --output results/v3-full
 ```
 
 The installer restores the recorded versions into the project-local `.R-library` as needed. The workflow checks all locked package versions before fitting. `--vanilla` starts R without restored workspaces or startup profiles.
@@ -32,13 +32,13 @@ Without `--download`, compatible custom inputs can run even if their checksums d
 - Report signatures from the 12 retained model input fields separately. Matching profiles are not proof of duplicate people. Keep them in the primary evaluation and report matched-profile versus novel-profile sensitivity results without treating the subsets as comparable randomized groups.
 - Record source checksums in `input_manifest.csv`, processing counts in `data_audit.csv`, and grouped fold assignments in the local run. Metrics describe the retained sample and are not survey-weighted population estimates.
 
-The official test data were already inspected in version 1. Version 2 therefore uses a **reused benchmark test**, not a fresh independent confirmation. Within version 2, test labels do not select preprocessing, hyperparameters, model families, or thresholds. Prior inspection still limits interpretation. Raw signatures and model input profiles are not person identifiers and cannot establish entity independence.
+The official test data were already inspected in versions 1 and 2. Version 3 therefore evaluates a **reused benchmark test** for the third time, not a fresh independent confirmation. Within version 3, test labels do not select preprocessing, candidate grids, hyperparameters, model families, or thresholds. Prior inspection still limits interpretation. Raw signatures and model input profiles are not person identifiers and cannot establish entity independence.
 
 The target describes whether recorded historical annual income exceeded $50,000. It is not adjusted to current dollars. The data do not support current individual eligibility, lending, employment, or benefit decisions. Recorded sex and race fields are historical categories; subgroup metrics are descriptive and do not establish fairness or causal effects.
 
 The default `data/raw/` and `results/` directories are excluded from version control; fitted `.rds` model files are also excluded. Review any custom output directory separately. Distribute only explicitly reviewed aggregate outputs with source attribution.
 
-After completing and inspecting a full run, use `Rscript --vanilla scripts/export_evidence.R RESULTS_DIRECTORY NEW_EVIDENCE_DIRECTORY` from the repository root. The exporter requires unchanged artifact hashes and byte sizes, complete version 2 full-run status, official UCI input checksums, and successful model diagnostics. It copies an allowlist of reports, aggregate tables, figures, and provenance files. Raw inputs, record-level and out-of-fold predictions, split/fold identifiers, model objects, and machine-specific session details remain local. The export includes its own checksum manifest. Version 1 evidence remains preserved separately.
+After completing and inspecting a full run, use `Rscript --vanilla scripts/export_evidence.R RESULTS_DIRECTORY NEW_EVIDENCE_DIRECTORY` from the repository root. The exporter requires unchanged artifact hashes and byte sizes, complete version 3 full-run status, official UCI input checksums, and successful model diagnostics. It copies an allowlist of reports, aggregate tables, figures, and provenance files. Raw inputs, record-level and out-of-fold predictions, split/fold identifiers, model objects, and machine-specific session details remain local. The export includes its own checksum manifest. Version 1 and version 2 evidence remain preserved separately.
 
 ## Attribution
 

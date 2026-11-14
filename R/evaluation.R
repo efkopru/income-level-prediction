@@ -28,8 +28,10 @@ model_health_table <- function(models) {
   do.call(rbind, lapply(names(models), function(name) {
     model <- models[[name]]
     logistic <- identical(model$kind, "logistic")
+    # For the SVM, converged means the solver finished before its iteration limit.
+    svm <- identical(model$kind, "svm")
     data.frame(model = name, fit_ok = isTRUE(model$fit_ok),
-      converged = if (logistic) isTRUE(model$converged) else NA,
+      converged = if (logistic || svm) isTRUE(model$converged) else NA,
       solver_status = if (logistic) model$model$jerr else NA_integer_,
       finite_parameters = if (logistic) all(is.finite(model$coefficients)) else NA,
       n_training = model$n_training, n_features = model$n_features)
