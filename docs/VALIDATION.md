@@ -254,7 +254,7 @@ The second run is kept locally in `results/v3-full-2026-11-14-superseded-report-
 | Saved-model inference | In a fresh R process, the five saved models reproduced all 16,255 saved test classes and scores exactly |
 | Source and input provenance | The nine source, protocol, and lockfile hashes match commit `1cdea72` and the `archive/v3-2026-11-14` snapshot; both official input hashes and sizes match |
 | Output integrity | All 40 local manifest entries and 35 public manifest entries match their hashes and byte sizes |
-| Final graphics | All six 2400 x 1500 PNGs visually inspected; PDF checks are described under graphics review |
+| Final graphics | All six 2400 x 1500 PNGs visually inspected; all six PDFs rendered and inspected at reduced resolution, as described under graphics review |
 | Historical preservation | Every file that the previous revision held under `docs/evidence` and `archive` is byte-identical; version 3 only adds two directories |
 
 The prediction audit and the saved-model check read record-level files that stay local, as in version 2. Their helper scripts and output are kept beside the local run directory. They are not part of the committed test suites.
@@ -321,15 +321,17 @@ No candidate was added, removed, or evaluated again after these results were see
 
 Training cross-validation preferred the forest, as in version 2: mean balanced accuracy 0.7832 against the tree's 0.7823. The majority, tree, and forest rows of `metrics.csv` are byte-identical to version 2, because those families selected the same settings and each fit sets its own seed. The tree-minus-forest balanced-accuracy difference is therefore again 0.043 percentage points, with a conditional 95% paired interval from -0.523 to 0.626 percentage points.
 
-The ridge and SVM rows differ from version 2 by one false positive each. Ridge has 918 false positives where version 2 had 917; the SVM has 900 where version 2 had 901. Their true-positive and false-negative counts are unchanged. All 25 metric intervals and 30 paired contrasts use 1,000 finite replicate estimates.
+The ridge and SVM rows differ from version 2 by one false positive each. Ridge has 918 false positives where version 2 had 917; the SVM has 900 where version 2 had 901. Their true-positive and false-negative counts are unchanged. These are net counts. The record-level predictions, which stay local, show that three ridge predictions changed (one new false positive, one new true positive, and one lost true positive) and that one SVM prediction changed (a false positive removed). No majority, tree, or forest prediction or score changed. An earlier revision of this record and of the README called this a difference of one test record, which held for the SVM but not for ridge. All 25 metric intervals and 30 paired contrasts use 1,000 finite replicate estimates.
 
-Version 3 widened four grids at once, so a difference between the versions cannot be attributed to one of those changes. A one-record difference on a test file that has now been evaluated three times is not evidence that a wider grid helps or harms. Neither version is preferred because of its test scores. The intervals remain conditional on the fitted models and the retained historical sample, with the same exclusions as in version 2.
+Version 3 widened four grids at once, so a difference between the versions cannot be attributed to one of those changes. A net difference of one false positive on a test file that has now been evaluated three times is not evidence that a wider grid helps or harms. Neither version is preferred because of its test scores. The intervals remain conditional on the fitted models and the retained historical sample, with the same exclusions as in version 2.
 
 ### Graphics review
 
 The six figures are the same six as in version 2, each exported as a 2400 x 1500 PNG and a 12 x 7.5 inch PDF. `R/plots.R` is unchanged from the previous revision. All six PNGs were visually checked against their supporting tables: titles, axes, legends, values, subgroup denominators, and captions are complete and readable, with no missing content or clipping.
 
-The six PDFs were not rendered for visual inspection, because the machine used here has no PDF renderer. Each was checked to be a single page of 864 x 540 points, which is 12 x 7.5 inches, and its extracted text was compared with the matching PNG: titles, subtitles, panel and axis labels, printed values, subgroup denominators, legend entries, and captions are all present. Apart from their embedded dates, the six PDFs are byte-identical to those of the second run. These checks cover page size and text. They do not show that the vector drawing matches the PNG.
+The six PDFs were first checked without rendering, because the machine used here has no command-line PDF renderer. Each was checked to be a single page of 864 x 540 points, which is 12 x 7.5 inches, and its extracted text was compared with the matching PNG: titles, subtitles, panel and axis labels, printed values, subgroup denominators, legend entries, and captions are all present. Apart from their embedded dates, the six PDFs are byte-identical to those of the second run.
+
+On November 15, 2026, all six PDFs were rendered in the PDF viewer of the Claude desktop app's built-in browser and inspected as whole pages, at about 500 pixels across the page. Each is a complete page: every panel, curve, marker, interval, legend, and caption is drawn, nothing is clipped at the page edges, and no text overlaps. The confusion-matrix counts match `metrics.csv`. At that resolution the small text is legible, but it was not checked glyph by glyph.
 
 ### Artifact and publication boundaries
 
