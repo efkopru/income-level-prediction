@@ -254,7 +254,7 @@ The second run is kept locally in `results/v3-full-2026-11-14-superseded-report-
 | Saved-model inference | In a fresh R process, the five saved models reproduced all 16,255 saved test classes and scores exactly |
 | Source and input provenance | The nine source, protocol, and lockfile hashes match commit `1cdea72` and the `archive/v3-2026-11-14` snapshot; both official input hashes and sizes match |
 | Output integrity | All 40 local manifest entries and 35 public manifest entries match their hashes and byte sizes |
-| Final graphics | All six 2400 x 1500 PNGs visually inspected; PDF checks are described under graphics review |
+| Final graphics | All six 2400 x 1500 PNGs visually inspected; all six PDFs rendered and inspected at reduced resolution, as described under graphics review |
 | Historical preservation | Every file that the previous revision held under `docs/evidence` and `archive` is byte-identical; version 3 only adds two directories |
 
 The prediction audit and the saved-model check read record-level files that stay local, as in version 2. Their helper scripts and output are kept beside the local run directory. They are not part of the committed test suites.
@@ -329,7 +329,9 @@ Version 3 widened four grids at once, so a difference between the versions canno
 
 The six figures are the same six as in version 2, each exported as a 2400 x 1500 PNG and a 12 x 7.5 inch PDF. `R/plots.R` is unchanged from the previous revision. All six PNGs were visually checked against their supporting tables: titles, axes, legends, values, subgroup denominators, and captions are complete and readable, with no missing content or clipping.
 
-The six PDFs were not rendered for visual inspection, because the machine used here has no PDF renderer. Each was checked to be a single page of 864 x 540 points, which is 12 x 7.5 inches, and its extracted text was compared with the matching PNG: titles, subtitles, panel and axis labels, printed values, subgroup denominators, legend entries, and captions are all present. Apart from their embedded dates, the six PDFs are byte-identical to those of the second run. These checks cover page size and text. They do not show that the vector drawing matches the PNG.
+The six PDFs were first checked without rendering, because the machine used here has no command-line PDF renderer. Each was checked to be a single page of 864 x 540 points, which is 12 x 7.5 inches, and its extracted text was compared with the matching PNG: titles, subtitles, panel and axis labels, printed values, subgroup denominators, legend entries, and captions are all present. Apart from their embedded dates, the six PDFs are byte-identical to those of the second run.
+
+On November 15, 2026, all six PDFs were rendered in the PDF viewer of the Claude desktop app's built-in browser and inspected as whole pages, at about 500 pixels across the page. Each is a complete page: every panel, curve, marker, interval, legend, and caption is drawn, nothing is clipped at the page edges, and no text overlaps. The confusion-matrix counts match `metrics.csv`. At that resolution the small text is legible, but it was not checked glyph by glyph.
 
 ### Artifact and publication boundaries
 
