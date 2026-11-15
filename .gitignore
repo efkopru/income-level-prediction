@@ -12,6 +12,9 @@
 *.rds
 *.RDS
 
+# Local presentation, PDF, and portfolio exports
+/output/
+
 # Temporary inspection files and private local configuration
 /tmp/
 .env
