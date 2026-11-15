@@ -359,3 +359,9 @@ Changing `scripts/verify_evidence.R` changes one hash recorded by the results-su
 All suites ran locally under R 4.6.1 on Windows with `--vanilla`, `LC_ALL=C`, and `TZ=UTC`.
 
 Hosted checks for commit `ca08698` then passed in all four Windows and Linux jobs on [PR #4](https://github.com/efkopru/income-level-prediction/pull/4). Both platforms reported the same five check counts as the table above, with no plot check skipped, and completed the downloaded-data smoke run. On both, `scripts/verify_evidence.R` verified the version 3 evidence, recomputed all seven grid-position records, and found all 70 version 2 fold records reproduced, so the recomputation holds on Linux as well as on Windows. Hosted results for later revisions are recorded on that pull request.
+
+## Portfolio page check: November 15, 2026
+
+Two sections above, written on October 8, 2026, say that the live portfolio remains unchanged. That no longer holds. A check of the [portfolio page](https://www.ekopru.com/income-level-prediction-using-r/index.html) on November 15, 2026 found the version 2 update live. The page links to this repository instead of [efkopru/ILPrediction](https://github.com/efkopru/ILPrediction) and shows the version 2 results and the ten results-summary charts. It keeps the 26 original slides in a separate historical gallery and links the technical report, presentation, chart book, and eleven summary CSV files. The server reports the page as last modified on November 13, 2026, so this version was live by then at the latest.
+
+The page does not yet show version 3. The site tags each linked file with the first 12 characters of its SHA-256 hash. Comparing those tags with the repository found two outdated files: the scorecard chart and the chart book, which predate the scorecard legend fix. The other nine charts and all eleven CSV files match the repository.

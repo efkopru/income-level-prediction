@@ -223,7 +223,7 @@ archive/                        Original script, v1 snapshot, published v2 and v
 
 The revised project is maintained in the public repository [efkopru/income-level-prediction](https://github.com/efkopru/income-level-prediction). Hosted Windows/Linux check results are available in [GitHub Actions](https://github.com/efkopru/income-level-prediction/actions/workflows/check.yml).
 
-The [existing portfolio page](https://www.ekopru.com/income-level-prediction-using-r/index.html) still links to the historical [efkopru/ILPrediction](https://github.com/efkopru/ILPrediction). The live portfolio has not been changed; the [portfolio handoff](docs/PORTFOLIO_HANDOFF.md) contains the revised copy and assets.
+The [portfolio page](https://www.ekopru.com/income-level-prediction-using-r/index.html) carries the version 2 update: it links to this repository instead of the historical [efkopru/ILPrediction](https://github.com/efkopru/ILPrediction) and shows the version 2 results and charts. As of November 15, 2026 it does not yet show version 3, and its scorecard chart and chart book predate the scorecard legend fix. The [portfolio handoff](docs/PORTFOLIO_HANDOFF.md) contains the copy and assets for both versions.
 
 ## Attribution and code rights
 
